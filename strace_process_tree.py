@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: UTF-8 -*-
 """
 Usage:
   strace-process-tree [filename]
@@ -9,6 +10,12 @@ Read strace -f output and produce a process tree.
 import re
 import fileinput
 from collections import defaultdict
+
+
+__version__ = '0.2'
+__author__ = 'Marius Gedminas <marius@gedmin.as>'
+__url__ = 'https://gist.github.com/mgedmin/4953427'
+__licence__ = 'GPL v2 or later' # or ask me for MIT
 
 
 def events(stream):
@@ -53,12 +60,18 @@ class ProcessTree:
         self.parents[pid] = ppid
         self.children[ppid].append(pid)
 
-    def _format(self, pids, indent=''):
+    def _format(self, pids, indent='', level=0):
         r = []
-        for pid in pids:
-            r.append(indent + '{} {}\n'.format(pid, self.names.get(pid, '')))
+        for n, pid in enumerate(pids):
+            if level == 0:
+                s, cs = '', ''
+            elif n < len(pids) - 1:
+                s, cs = '  ├─', '  │ '
+            else:
+                s, cs = '  └─', '    '
+            r.append(indent + s + '{} {}\n'.format(pid, self.names.get(pid, '')))
             r.append(self._format(sorted(self.children.get(pid, [])),
-                                  indent+'  '))
+                                  indent+cs, level+1))
 
         return ''.join(r)
 
@@ -81,7 +94,7 @@ def main():
                 tree.set_name(child_pid, args)
                 tree.add_child(pid, child_pid)
 
-    print(tree)
+    print(str(tree).rstrip())
 
 if __name__ == '__main__':
     main()
