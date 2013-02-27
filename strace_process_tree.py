@@ -12,7 +12,7 @@ import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.2'
+__version__ = '0.2.1'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -23,7 +23,7 @@ def events(stream):
     UNFINISHED_SUFFIX = ' <unfinished ...>'
     pending = {}
     for line in stream:
-        pid, spaces, event = line.rstrip().partition('  ')
+        pid, spaces, event = line.rstrip().partition(' ')
         pid = int(pid)
         m = RESUMED_PREFIX.match(event)
         if m is not None:
