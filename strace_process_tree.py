@@ -5,6 +5,11 @@ Usage:
   strace-process-tree [filename]
 
 Read strace -f output and produce a process tree.
+
+Recommended strace options for best results:
+
+    strace -f -e trace=process -s 1024 -o filename.out command args
+
 """
 
 import re
@@ -12,7 +17,7 @@ import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
