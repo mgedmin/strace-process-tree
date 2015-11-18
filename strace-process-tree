@@ -17,7 +17,7 @@ import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -95,7 +95,7 @@ def main():
             args, equal, result = event.rpartition(' = ')
             if result == '0':
                 tree.set_name(pid, args)
-        if event.startswith('clone('):
+        if event.startswith(('clone(', 'fork(', 'vfork(')):
             args, equal, result = event.rpartition(' = ')
             if result.isdigit():
                 child_pid = int(result)
