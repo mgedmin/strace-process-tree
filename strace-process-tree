@@ -89,6 +89,13 @@ class ProcessTree:
         return self._format(sorted(self.roots))
 
 
+def simplify_syscall(event):
+    # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=..., child_tidptr=...) => clone(FLAGS)
+    if event.startswith('clone('):
+        event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
+    return event
+
+
 def main():
     tree = ProcessTree()
 
@@ -96,12 +103,14 @@ def main():
         if event.startswith('execve('):
             args, equal, result = event.rpartition(' = ')
             if result == '0':
-                tree.set_name(pid, args)
+                name = simplify_syscall(args)
+                tree.set_name(pid, name)
         if event.startswith(('clone(', 'fork(', 'vfork(')):
             args, equal, result = event.rpartition(' = ')
             if result.isdigit():
                 child_pid = int(result)
-                tree.set_name(child_pid, args)
+                name = simplify_syscall(args)
+                tree.set_name(child_pid, name)
                 tree.add_child(pid, child_pid)
 
     print(str(tree).rstrip())
