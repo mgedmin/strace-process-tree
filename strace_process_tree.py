@@ -17,7 +17,7 @@ import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -26,6 +26,7 @@ __licence__ = 'GPL v2 or later' # or ask me for MIT
 def events(stream):
     RESUMED_PREFIX = re.compile('<... \w+ resumed> ')
     UNFINISHED_SUFFIX = ' <unfinished ...>'
+    DURATION_SUFFIX = re.compile(' <\d+([.]\d+)?>$')
     TIMESTAMP = re.compile('^\d+([.]\d+)?\s+')
     pending = {}
     for line in stream:
@@ -33,6 +34,7 @@ def events(stream):
         pid = int(pid)
         event = event.lstrip()
         event = TIMESTAMP.sub('', event)
+        event = DURATION_SUFFIX.sub('', event)
         m = RESUMED_PREFIX.match(event)
         if m is not None:
             event = pending.pop(pid) + event[len(m.group()):]
