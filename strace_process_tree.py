@@ -5,6 +5,11 @@ Usage:
   strace-process-tree [filename]
 
 Read strace -f output and produce a process tree.
+
+Recommended strace options for best results:
+
+    strace -f -e trace=process -s 1024 -o filename.out command args
+
 """
 
 import re
@@ -12,7 +17,7 @@ import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.2.2'
+__version__ = '0.5.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -21,11 +26,15 @@ __licence__ = 'GPL v2 or later' # or ask me for MIT
 def events(stream):
     RESUMED_PREFIX = re.compile('<... \w+ resumed> ')
     UNFINISHED_SUFFIX = ' <unfinished ...>'
+    DURATION_SUFFIX = re.compile(' <\d+([.]\d+)?>$')
+    TIMESTAMP = re.compile('^\d+([.]\d+)?\s+')
     pending = {}
     for line in stream:
         pid, spaces, event = line.rstrip().partition(' ')
         pid = int(pid)
         event = event.lstrip()
+        event = TIMESTAMP.sub('', event)
+        event = DURATION_SUFFIX.sub('', event)
         m = RESUMED_PREFIX.match(event)
         if m is not None:
             event = pending.pop(pid) + event[len(m.group()):]
@@ -80,6 +89,13 @@ class ProcessTree:
         return self._format(sorted(self.roots))
 
 
+def simplify_syscall(event):
+    # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=..., child_tidptr=...) => clone(FLAGS)
+    if event.startswith('clone('):
+        event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
+    return event
+
+
 def main():
     tree = ProcessTree()
 
@@ -87,12 +103,14 @@ def main():
         if event.startswith('execve('):
             args, equal, result = event.rpartition(' = ')
             if result == '0':
-                tree.set_name(pid, args)
-        if event.startswith('clone('):
+                name = simplify_syscall(args)
+                tree.set_name(pid, name)
+        if event.startswith(('clone(', 'fork(', 'vfork(')):
             args, equal, result = event.rpartition(' = ')
             if result.isdigit():
                 child_pid = int(result)
-                tree.set_name(child_pid, args)
+                name = simplify_syscall(args)
+                tree.set_name(child_pid, name)
                 tree.add_child(pid, child_pid)
 
     print(str(tree).rstrip())
