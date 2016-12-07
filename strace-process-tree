@@ -17,7 +17,7 @@ import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -93,7 +93,7 @@ def simplify_syscall(event):
     # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=..., child_tidptr=...) => clone(FLAGS)
     if event.startswith('clone('):
         event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
-    return event
+    return event.rstrip()
 
 
 def main():
