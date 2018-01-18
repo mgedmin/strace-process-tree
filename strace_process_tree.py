@@ -26,10 +26,10 @@ __licence__ = 'GPL v2 or later' # or ask me for MIT
 
 
 def events(stream):
-    RESUMED_PREFIX = re.compile('<... \w+ resumed> ')
+    RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
     UNFINISHED_SUFFIX = ' <unfinished ...>'
-    DURATION_SUFFIX = re.compile(' <\d+([.]\d+)?>$')
-    TIMESTAMP = re.compile('^\d+([.]\d+)?\s+')
+    DURATION_SUFFIX = re.compile(r' <\d+([.]\d+)?>$')
+    TIMESTAMP = re.compile(r'^\d+([.]\d+)?\s+')
     pending = {}
     for line in stream:
         pid, space, event = line.rstrip().partition(' ')
