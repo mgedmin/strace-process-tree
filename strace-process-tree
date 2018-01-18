@@ -13,7 +13,6 @@ Recommended strace options for best results:
 """
 
 import argparse
-import ast
 import re
 import string
 from collections import defaultdict
