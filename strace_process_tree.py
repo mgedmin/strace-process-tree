@@ -30,8 +30,15 @@ def events(stream):
     TIMESTAMP = re.compile('^\d+([.]\d+)?\s+')
     pending = {}
     for line in stream:
-        pid, spaces, event = line.rstrip().partition(' ')
-        pid = int(pid)
+        pid, space, event = line.rstrip().partition(' ')
+        try:
+            pid = int(pid)
+        except ValueError:
+            raise SystemExit(
+                "This does not look like a log file produced by strace -f:\n\n"
+                "  %s\n"
+                "There should've been a PID at the beginning of the line."
+                % line)
         event = event.lstrip()
         event = TIMESTAMP.sub('', event)
         event = DURATION_SUFFIX.sub('', event)
