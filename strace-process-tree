@@ -13,7 +13,9 @@ Recommended strace options for best results:
 """
 
 import argparse
+import ast
 import re
+import string
 from collections import defaultdict
 
 
@@ -86,14 +88,23 @@ class ProcessTree:
                 s, cs = '  ├─', '  │ '
             else:
                 s, cs = '  └─', '    '
-            r.append(indent + s + '{} {}\n'.format(pid, self.names.get(pid, '')))
-            r.append(self._format(sorted(self.children.get(pid, [])),
-                                  indent+cs, level+1))
+            name = self.names.get(pid, '')
+            children = sorted(self.children.get(pid, []))
+            if children:
+                ccs = '  │ '
+            else:
+                ccs = '    '
+            name = name.replace('\n', '\n' + indent + cs + ccs + '    ')
+            r.append(indent + s + '{} {}\n'.format(pid, name))
+            r.append(self._format(children, indent+cs, level+1))
 
         return ''.join(r)
 
-    def __str__(self):
+    def format(self):
         return self._format(sorted(self.roots))
+
+    def __str__(self):
+        return self.format()
 
 
 def simplify_syscall(event):
@@ -101,6 +112,75 @@ def simplify_syscall(event):
     if event.startswith('clone('):
         event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
     return event.rstrip()
+
+
+def extract_command_line(event):
+    # execve("/usr/bin/foo", ["foo", "bar"], [/* 45 vars */]) => foo bar
+    if event.startswith('clone('):
+        return '...'
+    elif event.startswith('execve('):
+        command = re.sub(r'^execve\([^[]*\[', '', re.sub(r'\], \[/\* \d+ vars \*/\]\)$', '', event.rstrip()))
+        command = parse_argv(command)
+        return format_command(command)
+    else:
+        return event.rstrip()
+
+
+ESCAPES = {
+    'n': '\n',
+    'r': '\r',
+    't': '\t',
+    'b': '\b',
+    '0': '\0',
+    'a': '\a',
+}
+
+
+def parse_argv(s):
+    # '"foo", "bar"..., "baz", "\""' => ['foo', 'bar...', 'baz', '"']
+    it = iter(s + ",")
+    args = []
+    for c in it:
+        if c == ' ':
+            continue
+        assert c == '"'
+        arg = []
+        for c in it:
+            if c == '"':
+                break
+            if c == '\\':
+                c = next(it)
+                arg.append(ESCAPES.get(c, c))
+            else:
+                arg.append(c)
+        c = next(it)
+        if c == ".":
+            arg.append('...')
+            c = next(it)
+            assert c == "."
+            c = next(it)
+            assert c == "."
+            c = next(it)
+        args.append(''.join(arg))
+        assert c == ','
+    return args
+
+
+SHELL_SAFE_CHARS = set(string.ascii_letters + string.digits + '%+,-./:=@^_~')
+SHELL_SAFE_QUOTED = SHELL_SAFE_CHARS | set("!#&'()*;<>?[]{|} \t\n")
+
+
+def format_command(command):
+    return ' '.join(map(pushquote, (
+        arg if all(c in SHELL_SAFE_CHARS for c in arg) else
+        '"%s"' % arg if all(c in SHELL_SAFE_QUOTED for c in arg) else
+        "'%s'" % arg.replace("'", "'\\''")
+        for arg in command
+    )))
+
+
+def pushquote(arg):
+    return re.sub('''^(['"])(--[a-zA-Z0-9_-]+)=''', r'\2=\1', arg)
 
 
 def main():
@@ -113,27 +193,31 @@ def main():
                 strace -f -e trace=process -s 1024 -o FILENAME COMMAND
             """)
     parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='more verbose output')
     parser.add_argument('filename', type=argparse.FileType('r'),
                         help='strace log to parse (use - to read stdin)')
     args = parser.parse_args()
 
     tree = ProcessTree()
 
+    mogrifier = simplify_syscall if args.verbose else extract_command_line
+
     for pid, event in events(args.filename):
         if event.startswith('execve('):
             args, equal, result = event.rpartition(' = ')
             if result == '0':
-                name = simplify_syscall(args)
+                name = mogrifier(args)
                 tree.set_name(pid, name)
         if event.startswith(('clone(', 'fork(', 'vfork(')):
             args, equal, result = event.rpartition(' = ')
             if result.isdigit():
                 child_pid = int(result)
-                name = simplify_syscall(args)
+                name = mogrifier(args)
                 tree.set_name(child_pid, name)
                 tree.add_child(pid, child_pid)
 
-    print(str(tree).rstrip())
+    print(tree.format().rstrip())
 
 
 if __name__ == '__main__':
