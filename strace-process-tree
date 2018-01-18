@@ -67,6 +67,9 @@ class ProcessTree:
             self.roots.add(pid)
             self.all.add(pid)
 
+    def has_name(self, pid):
+        return pid in self.names
+
     def set_name(self, pid, name):
         self.make_known(pid)
         self.names[pid] = name
@@ -214,7 +217,8 @@ def main():
             if result.isdigit():
                 child_pid = int(result)
                 name = mogrifier(args)
-                tree.set_name(child_pid, name)
+                if not tree.has_name(child_pid):
+                    tree.set_name(child_pid, name)
                 tree.add_child(pid, child_pid)
 
     print(tree.format().rstrip())
