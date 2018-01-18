@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 """
 Usage:
-  strace-process-tree [filename]
+  strace-process-tree filename
 
 Read strace -f output and produce a process tree.
 
@@ -12,12 +12,12 @@ Recommended strace options for best results:
 
 """
 
+import argparse
 import re
-import fileinput
 from collections import defaultdict
 
 
-__version__ = '0.5.1'
+__version__ = '0.6.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -97,9 +97,22 @@ def simplify_syscall(event):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="""
+            Read strace -f output and produce a process tree.
+
+            Recommended strace options for best results:
+
+                strace -f -e trace=process -s 1024 -o FILENAME COMMAND
+            """)
+    parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('filename', type=argparse.FileType('r'),
+                        help='strace log to parse (use - to read stdin)')
+    args = parser.parse_args()
+
     tree = ProcessTree()
 
-    for pid, event in events(fileinput.input()):
+    for pid, event in events(args.filename):
         if event.startswith('execve('):
             args, equal, result = event.rpartition(' = ')
             if result == '0':
@@ -114,6 +127,7 @@ def main():
                 tree.add_child(pid, child_pid)
 
     print(str(tree).rstrip())
+
 
 if __name__ == '__main__':
     main()
