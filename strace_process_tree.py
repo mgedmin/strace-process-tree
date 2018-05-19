@@ -18,7 +18,7 @@ import string
 from collections import defaultdict
 
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later' # or ask me for MIT
@@ -121,10 +121,14 @@ def extract_command_line(event):
     if event.startswith('clone('):
         if 'CLONE_THREAD' in event:
             return '(thread)'
+        elif 'flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD' in event:
+            return '(fork)'
         else:
             return '...'
     elif event.startswith('execve('):
-        command = re.sub(r'^execve\([^[]*\[', '', re.sub(r'\], \[/\* \d+ vars \*/\]\)$', '', event.rstrip()))
+        command = re.sub(r'^execve\([^[]*\[', '',
+                         re.sub(r'\], (0x[0-9a-f]+ )?\[?/\* \d+ vars \*/\]?\)$', '',
+                                event.rstrip()))
         command = parse_argv(command)
         return format_command(command)
     else:
@@ -148,7 +152,7 @@ def parse_argv(s):
     for c in it:
         if c == ' ':
             continue
-        assert c == '"'
+        assert c == '"', c
         arg = []
         for c in it:
             if c == '"':
@@ -162,12 +166,12 @@ def parse_argv(s):
         if c == ".":
             arg.append('...')
             c = next(it)
-            assert c == "."
+            assert c == ".", c
             c = next(it)
-            assert c == "."
+            assert c == ".", c
             c = next(it)
         args.append(''.join(arg))
-        assert c == ','
+        assert c == ',', (c, s)
     return args
 
 
