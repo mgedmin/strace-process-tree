@@ -15,10 +15,10 @@ Recommended strace options for best results:
 import argparse
 import re
 import string
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 
-__version__ = '0.6.2'
+__version__ = '0.7.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
@@ -52,55 +52,61 @@ def events(stream):
             yield (pid, event)
 
 
-class ProcessTree:
+Process = namedtuple('Process', 'pid, seq, name, parent')
+
+
+class ProcessTree(object):
     def __init__(self):
-        self.names = {}
-        self.children = defaultdict(list)
-        self.roots = set()
-        self.all = set()
+        self.processes = {}
+        self.children = defaultdict(set)
+        # Invariant: every Process appears exactly once in
+        # self.children[some_parent].
 
-    def make_known(self, pid):
-        if pid not in self.all:
-            self.roots.add(pid)
-            self.all.add(pid)
+    def add_child(self, ppid, pid, name):
+        parent = self.processes.get(ppid)
+        if parent is None:
+            parent = Process(ppid, 1, None, None)
+            self.children[None].add(parent)
+        child = self.processes.setdefault(pid, Process(pid, 0, name, parent))
+        self.children[parent].add(child)
 
-    def has_name(self, pid):
-        return pid in self.names
+    def handle_exec(self, pid, name):
+        old_process = self.processes.get(pid)
+        if old_process:
+            new_process = Process(pid, old_process.seq + 1, name,
+                                  old_process.parent)
+            if old_process.seq == 0 and not self.children[old_process]:
+                # Drop the child process if it did nothing interesting between
+                # fork() and exec().
+                self.children[old_process.parent].remove(old_process)
+        else:
+            new_process = Process(pid, 1, name, None)
+        self.processes[pid] = new_process
+        self.children[new_process.parent].add(new_process)
 
-    def set_name(self, pid, name):
-        self.make_known(pid)
-        self.names[pid] = name
-
-    def add_child(self, ppid, pid):
-        self.make_known(ppid)
-        self.make_known(pid)
-        if pid in self.roots:
-            self.roots.remove(pid)
-        self.children[ppid].append(pid)
-
-    def _format(self, pids, indent='', level=0):
+    def _format(self, processes, indent='', level=0):
         r = []
-        for n, pid in enumerate(pids):
+        for n, process in enumerate(processes):
             if level == 0:
                 s, cs = '', ''
-            elif n < len(pids) - 1:
+            elif n < len(processes) - 1:
                 s, cs = '  ├─', '  │ '
             else:
                 s, cs = '  └─', '    '
-            name = self.names.get(pid, '')
-            children = sorted(self.children.get(pid, []))
+            name = process.name or ''
+            children = sorted(self.children[process])
             if children:
                 ccs = '  │ '
             else:
                 ccs = '    '
             name = name.replace('\n', '\n' + indent + cs + ccs + '    ')
-            r.append(indent + s + '{} {}\n'.format(pid, name))
+            r.append(indent + s + '{} {}\n'.format(process.pid, name))
             r.append(self._format(children, indent+cs, level+1))
 
         return ''.join(r)
 
     def format(self):
-        return self._format(sorted(self.roots))
+        return self._format(sorted(self.children[None]))
 
     def __str__(self):
         return self.format()
@@ -217,18 +223,13 @@ def main():
             args, equal, result = event.rpartition(' = ')
             if result == '0':
                 name = mogrifier(args)
-                tree.set_name(pid, name)
+                tree.handle_exec(pid, name)
         if event.startswith(('clone(', 'fork(', 'vfork(')):
             args, equal, result = event.rpartition(' = ')
             if result.isdigit():
                 child_pid = int(result)
                 name = mogrifier(args)
-                if not tree.has_name(child_pid):
-                    # child's execve() might show up in the strace log before
-                    # the parent's clone() returns, so only set the name to
-                    # clone() if the child hasn't already execve()'d.
-                    tree.set_name(child_pid, name)
-                tree.add_child(pid, child_pid)
+                tree.add_child(pid, child_pid, name)
 
     print(tree.format().rstrip())
 
