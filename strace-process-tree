@@ -55,11 +55,9 @@ def events(stream):
 class ProcessTree:
     def __init__(self):
         self.names = {}
-        self.parents = {}
         self.children = defaultdict(list)
         self.roots = set()
         self.all = set()
-        # invariant: self.roots == self.all - set(self.parents), probably
 
     def make_known(self, pid):
         if pid not in self.all:
@@ -78,7 +76,6 @@ class ProcessTree:
         self.make_known(pid)
         if pid in self.roots:
             self.roots.remove(pid)
-        self.parents[pid] = ppid
         self.children[ppid].append(pid)
 
     def _format(self, pids, indent='', level=0):
