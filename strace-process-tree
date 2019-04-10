@@ -18,10 +18,10 @@ import string
 from collections import defaultdict
 
 
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
-__licence__ = 'GPL v2 or later' # or ask me for MIT
+__licence__ = 'GPL v2 or later'  # or ask me for MIT
 
 
 def events(stream):
@@ -110,7 +110,8 @@ class ProcessTree:
 
 
 def simplify_syscall(event):
-    # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=..., child_tidptr=...) => clone(FLAGS)
+    # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=...,
+    #       child_tidptr=...) => clone(FLAGS)
     if event.startswith('clone('):
         event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
     return event.rstrip()
@@ -126,9 +127,10 @@ def extract_command_line(event):
         else:
             return '...'
     elif event.startswith('execve('):
-        command = re.sub(r'^execve\([^[]*\[', '',
-                         re.sub(r'\], (0x[0-9a-f]+ )?\[?/\* \d+ vars \*/\]?\)$', '',
-                                event.rstrip()))
+        command = event.strip()
+        command = re.sub(r'^execve\([^[]*\[', '', command)
+        command = re.sub(r'\], (0x[0-9a-f]+ )?\[?/\* \d+ vars \*/\]?\)$', '',
+                         command)
         command = parse_argv(command)
         return format_command(command)
     else:
@@ -189,6 +191,7 @@ def format_command(command):
 
 
 def pushquote(arg):
+    # Change "--foo=bar" to --foo="bar" because that looks better to human eyes
     return re.sub('''^(['"])(--[a-zA-Z0-9_-]+)=''', r'\2=\1', arg)
 
 
@@ -224,6 +227,9 @@ def main():
                 child_pid = int(result)
                 name = mogrifier(args)
                 if not tree.has_name(child_pid):
+                    # child's execve() might show up in the strace log before
+                    # the parent's clone() returns, so only set the name to
+                    # clone() if the child hasn't already execve()'d.
                     tree.set_name(child_pid, name)
                 tree.add_child(pid, child_pid)
 
