@@ -18,7 +18,7 @@ import string
 from collections import defaultdict, namedtuple
 
 
-__version__ = '0.7.0'
+__version__ = '0.8.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = 'https://gist.github.com/mgedmin/4953427'
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
@@ -28,16 +28,21 @@ def events(stream):
     RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
     UNFINISHED_SUFFIX = ' <unfinished ...>'
     DURATION_SUFFIX = re.compile(r' <\d+([.]\d+)?>$')
-    TIMESTAMP = re.compile(r'^\d+([.]\d+)?\s+')
+    PID = re.compile(r'^\[pid (\d+)\]')
+    TIMESTAMP = re.compile(r'^(\d+|\d+:\d+:\d+)([.]\d+)?\s+')
+    IGNORE = re.compile(r'^$|^strace: Process \d+ attached$')
     pending = {}
     for line in stream:
-        pid, space, event = line.rstrip().partition(' ')
+        line = PID.sub(r'\1', line.rstrip())
+        pid, space, event = line.partition(' ')
         try:
             pid = int(pid)
         except ValueError:
+            if IGNORE.match(line):
+                continue
             raise SystemExit(
                 "This does not look like a log file produced by strace -f:\n\n"
-                "  %s\n"
+                "  %s\n\n"
                 "There should've been a PID at the beginning of the line."
                 % line)
         event = event.lstrip()
