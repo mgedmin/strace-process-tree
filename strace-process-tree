@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: UTF-8 -*-
 """
 Usage:
@@ -18,9 +18,9 @@ import string
 from collections import defaultdict, namedtuple
 
 
-__version__ = '0.8.0'
+__version__ = '0.9.0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
-__url__ = 'https://gist.github.com/mgedmin/4953427'
+__url__ = "https://github.com/mgedmin/scripts/blob/master/strace-process-tree"
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
 
 
