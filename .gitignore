@@ -5,3 +5,5 @@ tmp/
 *.pyc
 *.pyo
 __pycache__/
+.coverage
+.tox/
