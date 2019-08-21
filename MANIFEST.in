@@ -1,2 +1,11 @@
+include .gitignore
+include *.mk
+include *.py
 include *.rst
 include *.txt
+include *.yml
+include .coveragerc
+include LICENSE
+include Makefile
+include pytest.ini
+include tox.ini

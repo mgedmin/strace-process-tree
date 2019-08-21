@@ -29,6 +29,14 @@ Reads strace -f output and produces a process tree.  Example ::
           └─25528 awk '$1 == "Distribution:" { print $2 }'
 
 
+Installation
+------------
+
+Use your favourite pip wrapper to install strace-process-tree, e.g.
+
+    pipx install strace-process-tree
+
+
 Synopsis
 --------
 

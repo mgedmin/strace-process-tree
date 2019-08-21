@@ -2,10 +2,11 @@ Changes
 =======
 
 
-1.0.0 (unreleased)
+1.0.0 (2019-08-21)
 ------------------
 
 * Moved to its own repository on GitHub, added a README and this changelog.
+* First release to PyPI.
 
 
 0.9.0 (2019-08-01)
