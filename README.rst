@@ -47,7 +47,3 @@ optional arguments:
   --version      show program's version number and exit
   -v, --verbose  more verbose output
 
-Recommended strace options for best results:
-
-    strace -f -e trace=process -s 1024 -o filename.out command args
-
