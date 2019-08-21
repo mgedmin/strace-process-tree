@@ -18,9 +18,9 @@ import string
 from collections import defaultdict, namedtuple
 
 
-__version__ = '0.9.0'
+__version__ = '1.0.0.dev0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
-__url__ = "https://github.com/mgedmin/scripts/blob/master/strace-process-tree"
+__url__ = "https://github.com/mgedmin/strace-process-tree"
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
 
 
