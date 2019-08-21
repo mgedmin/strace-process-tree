@@ -1,0 +1,7 @@
+[run]
+source = strace_process_tree
+
+[report]
+exclude_lines =
+    pragma: nocover
+    if __name__ == .__main__.:

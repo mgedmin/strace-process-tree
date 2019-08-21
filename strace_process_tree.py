@@ -105,7 +105,8 @@ class ProcessTree(object):
             else:
                 ccs = '    '
             name = name.replace('\n', '\n' + indent + cs + ccs + '    ')
-            r.append(indent + s + '{} {}\n'.format(process.pid, name))
+            title = '{} {}'.format(process.pid or '<unknown>', name).rstrip()
+            r.append(indent + s + title.rstrip() + '\n')
             r.append(self._format(children, indent+cs, level+1))
 
         return ''.join(r)
