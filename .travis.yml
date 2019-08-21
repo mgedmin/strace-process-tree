@@ -1,0 +1,20 @@
+language: python
+dist: xenial
+python:
+  - 2.7
+  - 3.5
+  - 3.6
+  - 3.7
+  - pypy
+  - pypy3
+install:
+  - pip install pytest coverage coveralls flake8
+script:
+  - coverage run -m pytest
+  - flake8 *.py
+  - coverage report -m --fail-under=100
+after_success:
+  - coveralls
+notifications:
+  email: false
+cache: pip
