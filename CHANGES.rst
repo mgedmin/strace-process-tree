@@ -2,10 +2,11 @@ Changes
 =======
 
 
-1.0.1 (unreleased)
+1.1.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+* Show process running times when the strace log has timestamps
+  (i.e. -t/-tt/ -ttt was passed to strace).
 
 
 1.0.0 (2019-08-21)

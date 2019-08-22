@@ -6,12 +6,22 @@ import strace_process_tree as stp
 import pytest
 
 
+@pytest.mark.parametrize(['value', 'expected'], [
+    ('123', 123),
+    ('123.045', 123.045),
+    ('01:02:03', 3723),
+    ('01:02:03.045', 3723.045),
+])
+def test_parse_timestamp(value, expected):
+    assert stp.parse_timestamp(value) == expected
+
+
 def test_events():
     # events() does several things:
     # - extracts the pid if present
+    # - extracts timestamps if present
     # - extracts the system call
-    # - strips timestamps if present
-    # - strip durations if present
+    # - strips durations if present
     # - assembles system calls split across several lines with <unfinished...> <... resumed>
     log_lines = [
         'strace: Process 27369 attached',
@@ -27,13 +37,13 @@ def test_events():
     ]
     result = list(stp.events(log_lines))
     assert result == [
-        (27369, 'execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0'),
-        (27369, 'arch_prctl(ARCH_SET_FS, 0x7fbb38e89740) = 0'),
-        (27369, 'clone(child_stack=0x7fbb371faff0, flags=CLONE_VM|CLONE_VFORK|SIGCHLD) = 27370'),
-        (27370, 'execve("/bin/sh", ["sh", "-c", "uname -p 2> /dev/null"], 0x55842eb789e0 /* 72 vars */) = 0'),
-        (27370, '--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=27371, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---'),
-        (27370, 'exit_group(0)     = ?'),
-        (27370, '+++ exited with 0 +++'),
+        (27369, 50006.881056, 'execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0'),
+        (27369, 50006.884089, 'arch_prctl(ARCH_SET_FS, 0x7fbb38e89740) = 0'),
+        (27369, 50007.213383, 'clone(child_stack=0x7fbb371faff0, flags=CLONE_VM|CLONE_VFORK|SIGCHLD) = 27370'),
+        (27370, 50007.214709, 'execve("/bin/sh", ["sh", "-c", "uname -p 2> /dev/null"], 0x55842eb789e0 /* 72 vars */) = 0'),
+        (27370, 50007.216357, '--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=27371, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---'),
+        (27370, 50007.216395, 'exit_group(0)     = ?'),
+        (27370, 50007.216441, '+++ exited with 0 +++'),
     ]
 
 
@@ -47,15 +57,15 @@ def test_events_bad_file_format():
 
 def test_ProcessTree():
     pt = stp.ProcessTree()
-    pt.handle_exec(42, 'foo')
+    pt.handle_exec(42, 'foo', None)
     assert str(pt) == '42 foo\n'
 
 
 def test_ProcessTree_simple_child():
     pt = stp.ProcessTree()
-    pt.handle_exec(42, 'foo')
-    pt.add_child(42, 43, 'bar')
-    pt.add_child(42, 44, 'baz')
+    pt.handle_exec(42, 'foo', None)
+    pt.add_child(42, 43, 'bar', None)
+    pt.add_child(42, 44, 'baz', None)
     assert str(pt) == (
         '42 foo\n'
         '  ├─43 bar\n'
@@ -65,8 +75,8 @@ def test_ProcessTree_simple_child():
 
 def test_ProcessTree_unknown_parent_pid_and_name():
     pt = stp.ProcessTree()
-    pt.add_child(None, 43, 'bar')
-    pt.add_child(None, 44, 'baz')
+    pt.add_child(None, 43, 'bar', None)
+    pt.add_child(None, 44, 'baz', None)
     assert str(pt) == (
         '<unknown>\n'
         '  ├─43 bar\n'
@@ -76,9 +86,9 @@ def test_ProcessTree_unknown_parent_pid_and_name():
 
 def test_ProcessTree_unknown_parent_pid():
     pt = stp.ProcessTree()
-    pt.handle_exec(None, 'foo')
-    pt.add_child(None, 43, 'bar')
-    pt.add_child(None, 44, 'baz')
+    pt.handle_exec(None, 'foo', None)
+    pt.add_child(None, 43, 'bar', None)
+    pt.add_child(None, 44, 'baz', None)
     assert str(pt) == (
         '<unknown> foo\n'
         '  ├─43 bar\n'
@@ -88,9 +98,9 @@ def test_ProcessTree_unknown_parent_pid():
 
 def test_ProcessTree_exec_twice():
     pt = stp.ProcessTree()
-    pt.handle_exec(42, 'foo')
-    pt.add_child(42, 43, 'bar')
-    pt.handle_exec(43, 'qux')
+    pt.handle_exec(42, 'foo', None)
+    pt.add_child(42, 43, 'bar', None)
+    pt.handle_exec(43, 'qux', None)
     assert str(pt) == (
         '42 foo\n'
         '  └─43 qux\n'
@@ -99,15 +109,25 @@ def test_ProcessTree_exec_twice():
 
 def test_ProcessTree_exec_twice_with_children():
     pt = stp.ProcessTree()
-    pt.handle_exec(42, 'foo')
-    pt.add_child(42, 43, 'bar')
-    pt.add_child(43, 44, 'baz')
-    pt.handle_exec(43, 'qux')
+    pt.handle_exec(42, 'foo', None)
+    pt.add_child(42, 43, 'bar', None)
+    pt.add_child(43, 44, 'baz', None)
+    pt.handle_exec(43, 'qux', None)
     assert str(pt) == (
         '42 foo\n'
         '  ├─43 bar\n'
         '  │   └─44 baz\n'
         '  └─43 qux\n'
+    )
+
+
+def test_ProcessTree_start_time_known_exit_time_not_known():
+    pt = stp.ProcessTree()
+    pt.handle_exec(42, 'foo', None)
+    pt.add_child(42, 43, 'bar', 24)
+    assert str(pt) == (
+        '42 foo\n'
+        '  └─43 bar [@24.0s]\n'
     )
 
 
@@ -192,6 +212,20 @@ def test_main_help(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert output.startswith(
         'usage: strace-process-tree'
+    )
+
+
+def test_parse_stream():
+    tree = stp.parse_stream([
+        stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
+        stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = 43'),
+        stp.Event(43, 1262372452.001, 'execve("/usr/bin/printf", ["/usr/bin/printf", "hi"], 0x557884c640a8 /* 71 vars */) = 0'),
+        stp.Event(43, 1262372452.073, 'exit_group(0)                     = ?'),
+        stp.Event(43, 1262372452.074, '+++ exited with 0 +++'),
+    ])
+    assert str(tree) == (
+        "42 /tmp/test.sh\n"
+        "  └─43 /usr/bin/printf hi [0.1s @0.4s]\n"
     )
 
 

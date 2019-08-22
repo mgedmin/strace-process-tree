@@ -24,6 +24,17 @@ __url__ = "https://github.com/mgedmin/strace-process-tree"
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
 
 
+Event = namedtuple('Event', 'pid, timestamp, event')
+
+
+def parse_timestamp(timestamp):
+    if ':' in timestamp:
+        h, m, s = timestamp.split(':')
+        return (int(h) * 60 + int(m)) * 60 + float(s)
+    else:
+        return float(timestamp)
+
+
 def events(stream):
     RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
     UNFINISHED_SUFFIX = ' <unfinished ...>'
@@ -46,15 +57,20 @@ def events(stream):
                 "There should've been a PID at the beginning of the line."
                 % line)
         event = event.lstrip()
-        event = TIMESTAMP.sub('', event)
+        timestamp = None
+        m = TIMESTAMP.match(event)
+        if m is not None:
+            timestamp = parse_timestamp(m.group())
+            event = event[m.end():]
         event = DURATION_SUFFIX.sub('', event)
         m = RESUMED_PREFIX.match(event)
         if m is not None:
-            event = pending.pop(pid) + event[len(m.group()):]
+            pending_event, timestamp = pending.pop(pid)
+            event = pending_event + event[m.end():]
         if event.endswith(UNFINISHED_SUFFIX):
-            pending[pid] = event[:-len(UNFINISHED_SUFFIX)]
+            pending[pid] = (event[:-len(UNFINISHED_SUFFIX)], timestamp)
         else:
-            yield (pid, event)
+            yield Event(pid, timestamp, event)
 
 
 Process = namedtuple('Process', 'pid, seq, name, parent')
@@ -62,32 +78,69 @@ Process = namedtuple('Process', 'pid, seq, name, parent')
 
 class ProcessTree(object):
     def __init__(self):
-        self.processes = {}
+        self.processes = {}   # map pid to Process
+        self.start_time = {}  # map Process to seconds
+        self.exit_time = {}   # map Process to seconds
         self.children = defaultdict(set)
         # Invariant: every Process appears exactly once in
         # self.children[some_parent].
 
-    def add_child(self, ppid, pid, name):
+    def add_child(self, ppid, pid, name, timestamp):
         parent = self.processes.get(ppid)
         if parent is None:
-            parent = Process(ppid, 1, None, None)
+            # This can happen when we attach to a running process and so miss
+            # the initial execve() call that would have given it a name.
+            parent = Process(pid=ppid, seq=1, name=None, parent=None)
             self.children[None].add(parent)
-        child = self.processes.setdefault(pid, Process(pid, 0, name, parent))
+        # NB: it's possible that strace saw code executing in the child process
+        # before the parent's clone() returned a value, so we might already
+        # have a self.processes[pid].
+        child = self.processes.get(pid)
+        if child is None:
+            # We pass seq=0 here and seq=1 in handle_exec() because
+            # conceptually clone() happens before execve(), but we must be
+            # ready to handle these two events in either order.
+            child = Process(pid=pid, seq=0, name=name, parent=parent)
+            self.processes[pid] = child
         self.children[parent].add(child)
+        # The timestamp of clone() is always going to be earlier than the
+        # timestamp of execve() so we use unconditional assignment here but a
+        # setdefault() in handle_exec().
+        self.start_time[child] = timestamp
 
-    def handle_exec(self, pid, name):
+    def handle_exec(self, pid, name, timestamp):
         old_process = self.processes.get(pid)
         if old_process:
-            new_process = Process(pid, old_process.seq + 1, name,
-                                  old_process.parent)
+            new_process = old_process._replace(seq=old_process.seq + 1,
+                                               name=name)
             if old_process.seq == 0 and not self.children[old_process]:
                 # Drop the child process if it did nothing interesting between
                 # fork() and exec().
                 self.children[old_process.parent].remove(old_process)
         else:
-            new_process = Process(pid, 1, name, None)
+            new_process = Process(pid=pid, seq=1, name=name, parent=None)
         self.processes[pid] = new_process
         self.children[new_process.parent].add(new_process)
+        self.start_time.setdefault(new_process, timestamp)
+
+    def handle_exit(self, pid, timestamp):
+        process = self.processes.get(pid)
+        if process:
+            self.exit_time[process] = timestamp
+
+    def _format_time_range(self, start_time, exit_time):
+        if start_time is not None and exit_time is not None:
+            return '[{duration:.1f}s @{start_time:.1f}s]'.format(
+                start_time=start_time,
+                exit_time=exit_time,
+                duration=exit_time - start_time
+            )
+        elif start_time:  # skip both None and 0 please
+            return '[@{start_time:.1f}s]'.format(
+                start_time=start_time,
+            )
+        else:
+            return ''
 
     def _format(self, processes, indent='', level=0):
         r = []
@@ -98,14 +151,22 @@ class ProcessTree(object):
                 s, cs = '  ├─', '  │ '
             else:
                 s, cs = '  └─', '    '
-            name = process.name or ''
             children = sorted(self.children[process])
             if children:
                 ccs = '  │ '
             else:
                 ccs = '    '
+            name = process.name or ''
             name = name.replace('\n', '\n' + indent + cs + ccs + '    ')
-            title = '{} {}'.format(process.pid or '<unknown>', name).rstrip()
+            time_range = self._format_time_range(
+                self.start_time.get(process),
+                self.exit_time.get(process),
+            )
+            title = '{pid} {name} {time_range}'.format(
+                pid=process.pid or '<unknown>',
+                name=name,
+                time_range=time_range,
+            ).rstrip()
             r.append(indent + s + title.rstrip() + '\n')
             r.append(self._format(children, indent+cs, level+1))
 
@@ -204,6 +265,34 @@ def pushquote(arg):
     return re.sub('''^(['"])(--[a-zA-Z0-9_-]+)=''', r'\2=\1', arg)
 
 
+def parse_stream(event_stream, mogrifier=extract_command_line):
+    tree = ProcessTree()
+    first_timestamp = None
+    for e in event_stream:
+        timestamp = e.timestamp
+        if timestamp is not None:
+            if first_timestamp is None:
+                first_timestamp = e.timestamp
+            timestamp -= first_timestamp
+        if e.event.startswith('execve('):
+            args, equal, result = e.event.rpartition(' = ')
+            if result == '0':
+                name = mogrifier(args)
+                tree.handle_exec(e.pid, name, timestamp)
+        if e.event.startswith(('clone(', 'fork(', 'vfork(')):
+            args, equal, result = e.event.rpartition(' = ')
+            # if clone() fails, the event will look like this:
+            #   clone(...) = -1 ENOENT (No such file or directory)
+            # and it will fail the result.isdigit() check
+            if result.isdigit():
+                child_pid = int(result)
+                name = mogrifier(args)
+                tree.add_child(e.pid, child_pid, name, timestamp)
+        if e.event.startswith('+++ exited with '):
+            tree.handle_exit(e.pid, timestamp)
+    return tree
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="""
@@ -220,22 +309,9 @@ def main():
                         help='strace log to parse (use - to read stdin)')
     args = parser.parse_args()
 
-    tree = ProcessTree()
-
     mogrifier = simplify_syscall if args.verbose else extract_command_line
 
-    for pid, event in events(args.filename):
-        if event.startswith('execve('):
-            args, equal, result = event.rpartition(' = ')
-            if result == '0':
-                name = mogrifier(args)
-                tree.handle_exec(pid, name)
-        if event.startswith(('clone(', 'fork(', 'vfork(')):
-            args, equal, result = event.rpartition(' = ')
-            if result.isdigit():
-                child_pid = int(result)
-                name = mogrifier(args)
-                tree.add_child(pid, child_pid, name)
+    tree = parse_stream(events(args.filename), mogrifier)
 
     print(tree.format().rstrip())
 
