@@ -73,6 +73,28 @@ def test_ProcessTree_simple_child():
     )
 
 
+def test_ProcessTree_fork_then_exec():
+    pt = stp.ProcessTree()
+    pt.handle_exec(42, 'foo', None)
+    pt.add_child(42, 43, 'fork()', None)
+    pt.handle_exec(43, 'bar', None)
+    assert str(pt) == (
+        '42 foo\n'
+        '  └─43 bar\n'
+    )
+
+
+def test_ProcessTree_exec_then_fork():
+    pt = stp.ProcessTree()
+    pt.handle_exec(42, 'foo', None)
+    pt.handle_exec(43, 'bar', None)
+    pt.add_child(42, 43, 'fork()', None)
+    assert str(pt) == (
+        '42 foo\n'
+        '  └─43 bar\n'
+    )
+
+
 def test_ProcessTree_unknown_parent_pid_and_name():
     pt = stp.ProcessTree()
     pt.add_child(None, 43, 'bar', None)
@@ -131,6 +153,11 @@ def test_ProcessTree_start_time_known_exit_time_not_known():
     )
 
 
+def test_ProcessTree_handle_exit_unknown_pid():
+    pt = stp.ProcessTree()
+    pt.handle_exit(42, 1775.45)
+
+
 def test_simplify_syscall():
     assert stp.simplify_syscall(
         'exit_group(0)    '
@@ -178,6 +205,7 @@ def test_extract_command_line():
 
 
 def test_parse_argv():
+    assert stp.parse_argv('"foo"') == ["foo"]
     assert stp.parse_argv('"foo", "bar"') == ["foo", "bar"]
     assert stp.parse_argv(r'"foo", "bar"..., "baz\t", "\""') == [
         "foo", "bar...", "baz\t", '"',
@@ -192,6 +220,42 @@ def test_format_command():
 
 def test_pushquote():
     assert stp.pushquote('"--foo=bar"') == '--foo="bar"'
+
+
+def test_parse_stream():
+    tree = stp.parse_stream([
+        stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
+        stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = 43'),
+        stp.Event(43, 1262372452.001, 'execve("/usr/bin/printf", ["/usr/bin/printf", "hi"], 0x557884c640a8 /* 71 vars */) = 0'),
+        stp.Event(43, 1262372452.073, 'exit_group(0)                     = ?'),
+        stp.Event(43, 1262372452.074, '+++ exited with 0 +++'),
+    ])
+    assert str(tree) == (
+        "42 /tmp/test.sh\n"
+        "  └─43 /usr/bin/printf hi [0.1s @0.4s]\n"
+    )
+
+
+def test_parse_stream_exec_error():
+    tree = stp.parse_stream([
+        stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
+        stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = 43'),
+        stp.Event(43, 1262372452.001, 'execve("/usr/bin/printf", ["/usr/bin/printf", "hi"], 0x557884c640a8 /* 71 vars */) = -1 ENOENT (No such file or directory)'),
+    ])
+    assert str(tree) == (
+        "42 /tmp/test.sh\n"
+        "  └─43 (fork) [@0.4s]\n"
+    )
+
+
+def test_parse_stream_clone_error():
+    tree = stp.parse_stream([
+        stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
+        stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = -1 EPERM (Operation not permitted)'),
+    ])
+    assert str(tree) == (
+        "42 /tmp/test.sh\n"
+    )
 
 
 def test_main_no_args(monkeypatch, capsys):
@@ -212,20 +276,6 @@ def test_main_help(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert output.startswith(
         'usage: strace-process-tree'
-    )
-
-
-def test_parse_stream():
-    tree = stp.parse_stream([
-        stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
-        stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = 43'),
-        stp.Event(43, 1262372452.001, 'execve("/usr/bin/printf", ["/usr/bin/printf", "hi"], 0x557884c640a8 /* 71 vars */) = 0'),
-        stp.Event(43, 1262372452.073, 'exit_group(0)                     = ?'),
-        stp.Event(43, 1262372452.074, '+++ exited with 0 +++'),
-    ])
-    assert str(tree) == (
-        "42 /tmp/test.sh\n"
-        "  └─43 /usr/bin/printf hi [0.1s @0.4s]\n"
     )
 
 

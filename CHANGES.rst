@@ -7,6 +7,8 @@ Changes
 
 * Show process running times when the strace log has timestamps
   (i.e. -t/-tt/ -ttt was passed to strace).
+* Fix tree construction to avoid duplicating processes when execve()
+  shows up in the log before the parent's clone() resumes.
 
 
 1.0.0 (2019-08-21)

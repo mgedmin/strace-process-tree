@@ -90,18 +90,21 @@ class ProcessTree(object):
         if parent is None:
             # This can happen when we attach to a running process and so miss
             # the initial execve() call that would have given it a name.
-            parent = Process(pid=ppid, seq=1, name=None, parent=None)
+            parent = Process(pid=ppid, seq=0, name=None, parent=None)
             self.children[None].add(parent)
         # NB: it's possible that strace saw code executing in the child process
         # before the parent's clone() returned a value, so we might already
         # have a self.processes[pid].
-        child = self.processes.get(pid)
-        if child is None:
+        old_process = self.processes.get(pid)
+        if old_process is not None:
+            self.children[old_process.parent].remove(old_process)
+            child = old_process._replace(parent=parent)
+        else:
             # We pass seq=0 here and seq=1 in handle_exec() because
             # conceptually clone() happens before execve(), but we must be
             # ready to handle these two events in either order.
             child = Process(pid=pid, seq=0, name=name, parent=parent)
-            self.processes[pid] = child
+        self.processes[pid] = child
         self.children[parent].add(child)
         # The timestamp of clone() is always going to be earlier than the
         # timestamp of execve() so we use unconditional assignment here but a
@@ -126,6 +129,8 @@ class ProcessTree(object):
     def handle_exit(self, pid, timestamp):
         process = self.processes.get(pid)
         if process:
+            # process may be None when we attach to a running process and
+            # see it exit before it does any clone()/execve() calls
             self.exit_time[process] = timestamp
 
     def _format_time_range(self, start_time, exit_time):
@@ -226,7 +231,7 @@ def parse_argv(s):
             continue
         assert c == '"', c
         arg = []
-        for c in it:
+        for c in it:  # pragma: no branch -- loop will execute at least once
             if c == '"':
                 break
             if c == '\\':
@@ -282,7 +287,7 @@ def parse_stream(event_stream, mogrifier=extract_command_line):
         if e.event.startswith(('clone(', 'fork(', 'vfork(')):
             args, equal, result = e.event.rpartition(' = ')
             # if clone() fails, the event will look like this:
-            #   clone(...) = -1 ENOENT (No such file or directory)
+            #   clone(...) = -1 EPERM (Operation not permitted)
             # and it will fail the result.isdigit() check
             if result.isdigit():
                 child_pid = int(result)

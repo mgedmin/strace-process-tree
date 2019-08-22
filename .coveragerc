@@ -1,5 +1,6 @@
 [run]
 source = strace_process_tree
+branch = true
 
 [report]
 exclude_lines =
