@@ -7,6 +7,8 @@ Changes
 
 * Colorize the output if your terminal supports color.
 * Command-line options --color/--no-color if you don't want autodetection.
+* Use ASCII art if your locale does not support UTF-8.
+* Command-line options --ascii/--unicode if you don't want autodetection.
 * Speed up strace log parsing by 40%.
 
 

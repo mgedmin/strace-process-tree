@@ -27,30 +27,46 @@ __url__ = "https://github.com/mgedmin/strace-process-tree"
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
 
 
+Tree = namedtuple('Tree', 'trunk, fork, end, space')
+
+
 class Theme(object):
 
     default_styles = dict(
-        tree='normal',
+        tree_style='normal',
         pid='red',
         process='green',
         time_range='blue',
     )
 
-    # In case we want pure-ASCII trees in the future
-    tree_space = '    '
-    tree_trunk = '  │ '
-    tree_fork  = '  ├─'   # noqa: E221
-    tree_end   = '  └─'   # noqa: E221
+    ascii_tree = Tree(
+        '  | ',
+        '  |-',
+        '  `-',
+        '    ',
+    )
 
-    def __new__(cls, *args, **kw):
+    unicode_tree = Tree(
+        '  │ ',
+        '  ├─',
+        '  └─',
+        '    ',
+    )
+
+    def __new__(cls, color=None, unicode=None):
         if cls is Theme:
-            if cls.should_use_color():
+            if color is None:
+                color = cls.should_use_color()
+            if color:
                 cls = AnsiTheme
             else:
                 cls = PlainTheme
-        return object.__new__(cls, *args, **kw)
+        return object.__new__(cls)
 
-    def __init__(self):
+    def __init__(self, color=None, unicode=None):
+        if unicode is None:
+            unicode = self.can_unicode()
+        self.tree = self.unicode_tree if unicode else self.ascii_tree
         self.styles = dict(self.default_styles)
 
     @classmethod
@@ -65,26 +81,33 @@ class Theme(object):
     def terminal_supports_color(cls):
         return (os.environ.get('TERM') or 'dumb') != 'dumb'
 
+    @classmethod
+    def can_unicode(cls):
+        return getattr(sys.stdout, 'encoding', None) == 'UTF-8'
+
     def _format(self, prefix, suffix, text):
         if not text:
             return ''
         return '{}{}{}'.format(prefix, text, suffix)
 
+    def _no_format(self, text):
+        return text or ''
+
     def __getattr__(self, attr):
         if attr not in self.styles:
             raise AttributeError(attr)
         style = self.styles[attr]
-        prefix = self.ctlseq[style]
-        suffix = self.ctlseq['normal']
-        _format = partial(self._format, prefix, suffix)
+        if style == 'normal':
+            _format = self._no_format
+        else:
+            prefix = self.ctlseq[style]
+            suffix = self.ctlseq['normal']
+            _format = partial(self._format, prefix, suffix)
         setattr(self, attr, _format)
         return _format
 
 
 class PlainTheme(Theme):
-
-    def _no_format(self, text):
-        return text or ''
 
     def __getattr__(self, attr):
         if attr not in self.styles:
@@ -236,11 +259,12 @@ class ProcessTree(object):
         else:
             return ''
 
-    def _format_process_name(self, theme, name, indent, cs, ccs):
+    def _format_process_name(self, theme, name, indent, cs, ccs, padding):
         lines = (name or '').split('\n')
-        return '\n{indent}{tree}    '.format(
+        return '\n{indent}{tree}{padding}'.format(
             indent=indent,
-            tree=theme.tree(cs + ccs),
+            tree=theme.tree_style(cs + ccs),
+            padding=padding,
         ).join(
             theme.process(line)
             for line in lines
@@ -252,14 +276,14 @@ class ProcessTree(object):
             if level == 0:
                 s, cs = '', ''
             elif n < len(processes) - 1:
-                s, cs = theme.tree_fork, theme.tree_trunk
+                s, cs = theme.tree.fork, theme.tree.trunk
             else:
-                s, cs = theme.tree_end, theme.tree_space
+                s, cs = theme.tree.end, theme.tree.space
             children = sorted(self.children[process])
             if children:
-                ccs = theme.tree_trunk
+                ccs = theme.tree.trunk
             else:
-                ccs = theme.tree_space
+                ccs = theme.tree.space
             time_range = self._format_time_range(
                 self.start_time.get(process),
                 self.exit_time.get(process),
@@ -267,10 +291,10 @@ class ProcessTree(object):
             title = '{pid} {name} {time_range}'.format(
                 pid=theme.pid(process.pid or '<unknown>'),
                 name=self._format_process_name(
-                    theme, process.name, indent, cs, ccs),
+                    theme, process.name, indent, cs, ccs, theme.tree.space),
                 time_range=theme.time_range(time_range),
             ).rstrip()
-            r.append(indent + (theme.tree(s) + title).rstrip() + '\n')
+            r.append(indent + (theme.tree_style(s) + title).rstrip() + '\n')
             r.append(self._format(theme, children, indent+cs, level+1))
 
         return ''.join(r)
@@ -279,7 +303,7 @@ class ProcessTree(object):
         return self._format(theme, sorted(self.children[None]))
 
     def __str__(self):
-        return self.format(PlainTheme())
+        return self.format(PlainTheme(unicode=True))
 
 
 def simplify_syscall(event):
@@ -408,8 +432,12 @@ def main():
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('-c', '--color', action='store_true', default=None,
                         help='force color output')
-    parser.add_argument('--no-color', action='store_false', dest='color',
+    parser.add_argument('-C', '--no-color', action='store_false', dest='color',
                         help='disable color output')
+    parser.add_argument('-U', '--unicode', action='store_true', default=None,
+                        help='force Unicode output')
+    parser.add_argument('-A', '--ascii', action='store_false', dest='unicode',
+                        help='force ASCII output')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='more verbose output')
     parser.add_argument('filename', type=argparse.FileType('r'),
@@ -420,13 +448,7 @@ def main():
 
     tree = parse_stream(events(args.filename), mogrifier)
 
-    if args.color is None:
-        theme = Theme()  # autodetect
-    elif args.color:
-        theme = AnsiTheme()
-    else:
-        theme = PlainTheme()
-
+    theme = Theme(color=args.color, unicode=args.unicode)
     print(tree.format(theme).rstrip())
 
 

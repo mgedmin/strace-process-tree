@@ -345,9 +345,9 @@ def test_main_no_args(monkeypatch, capsys):
         stp.main()
     output = capsys.readouterr().err
     assert output.startswith(
-        'usage: strace-process-tree [-h] [--version] [-c] [--no-color] [-v] filename\n'
+        'usage: strace-process-tree [-h] [--version] [-c] [-C] [-U] [-A] [-v] filename\n'
         'strace-process-tree: error:'
-    )
+    ), output
 
 
 def test_main_help(monkeypatch, capsys):
