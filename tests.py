@@ -104,6 +104,30 @@ def test_events():
     ]
 
 
+def test_events_special_pid_format():
+    log_lines = [
+        '[pid 27369] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
+    ]
+    result = list(stp.events(log_lines))
+    assert result == [
+        (27369, None, 'execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0'),
+    ]
+
+
+def test_events_special_cases_that_cannot_really_happen():
+    log_lines = [
+        '27369 42',
+        '27369 arch_prctl(ARCH_SET_FS, 0x7fef1c205140) = 0 <ha ha>',
+        '27369 <... no really why am I doin this',
+    ]
+    result = list(stp.events(log_lines))
+    assert result == [
+        (27369, None, '42'),
+        (27369, None, 'arch_prctl(ARCH_SET_FS, 0x7fef1c205140) = 0 <ha ha>'),
+        (27369, None, '<... no really why am I doin this'),
+    ]
+
+
 def test_events_bad_file_format():
     log_lines = [
         'Hello this is a text file and not an strace log file at all actually.',
