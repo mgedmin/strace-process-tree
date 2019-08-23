@@ -5,7 +5,7 @@ Changes
 1.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+* Speed up strace log parsing by 40%.
 
 
 1.1.0 (2019-08-22)

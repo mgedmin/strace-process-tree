@@ -30,21 +30,25 @@ Event = namedtuple('Event', 'pid, timestamp, event')
 def parse_timestamp(timestamp):
     if ':' in timestamp:
         h, m, s = timestamp.split(':')
-        return (int(h) * 60 + int(m)) * 60 + float(s)
+        return (float(h) * 60 + float(m)) * 60 + float(s)
     else:
         return float(timestamp)
 
 
+RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
+UNFINISHED_SUFFIX = ' <unfinished ...>'
+DURATION_SUFFIX = re.compile(r' <\d+(?:\.\d+)?>$')
+PID = re.compile(r'^\[pid (\d+)\]')
+TIMESTAMP = re.compile(r'^\d+(?::\d+:\d+)?(?:\.\d+)?\s+')
+IGNORE = re.compile(r'^$|^strace: Process \d+ attached$')
+
+
 def events(stream):
-    RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
-    UNFINISHED_SUFFIX = ' <unfinished ...>'
-    DURATION_SUFFIX = re.compile(r' <\d+([.]\d+)?>$')
-    PID = re.compile(r'^\[pid (\d+)\]')
-    TIMESTAMP = re.compile(r'^(\d+|\d+:\d+:\d+)([.]\d+)?\s+')
-    IGNORE = re.compile(r'^$|^strace: Process \d+ attached$')
     pending = {}
     for line in stream:
-        line = PID.sub(r'\1', line.rstrip())
+        line = line.strip()
+        if line.startswith('[pid'):
+            line = PID.sub(r'\1', line)
         pid, space, event = line.partition(' ')
         try:
             pid = int(pid)
@@ -58,15 +62,20 @@ def events(stream):
                 % line)
         event = event.lstrip()
         timestamp = None
-        m = TIMESTAMP.match(event)
-        if m is not None:
-            timestamp = parse_timestamp(m.group())
-            event = event[m.end():]
-        event = DURATION_SUFFIX.sub('', event)
-        m = RESUMED_PREFIX.match(event)
-        if m is not None:
-            pending_event, timestamp = pending.pop(pid)
-            event = pending_event + event[m.end():]
+        if event[:1].isdigit():
+            m = TIMESTAMP.match(event)
+            if m is not None:
+                timestamp = parse_timestamp(m.group())
+                event = event[m.end():]
+        if event.endswith('>'):
+            e, sp, d = event.rpartition(' <')
+            if DURATION_SUFFIX.match(sp + d):
+                event = e
+        if event.startswith('<...'):
+            m = RESUMED_PREFIX.match(event)
+            if m is not None:
+                pending_event, timestamp = pending.pop(pid)
+                event = pending_event + event[m.end():]
         if event.endswith(UNFINISHED_SUFFIX):
             pending[pid] = (event[:-len(UNFINISHED_SUFFIX)], timestamp)
         else:
