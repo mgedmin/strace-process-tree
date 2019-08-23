@@ -40,18 +40,22 @@ Use your favourite pip wrapper to install strace-process-tree, e.g.
 Synopsis
 --------
 
-Usage: strace_process_tree.py [-h] [--version] [-v] filename
+Usage: strace-process-tree [-h] [--version] [-c] [-C] [-U] [-A] [-v] filename
 
 Read strace -f output and produce a process tree. Recommended strace options
 for best results:
 
-  strace -f -e trace=process -s 1024 -o FILENAME COMMAND
+  strace -f -ttt -e trace=process -s 1024 -o FILENAME COMMAND
 
 positional arguments:
-  filename       strace log to parse (use - to read stdin)
+  filename        strace log to parse (use - to read stdin)
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --version      show program's version number and exit
-  -v, --verbose  more verbose output
+  -h, --help      show this help message and exit
+  --version       show program's version number and exit
+  -c, --color     force color output
+  -C, --no-color  disable color output
+  -U, --unicode   force Unicode output
+  -A, --ascii     force ASCII output
+  -v, --verbose   more verbose output
 
