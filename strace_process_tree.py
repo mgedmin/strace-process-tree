@@ -13,15 +13,95 @@ Recommended strace options for best results:
 """
 
 import argparse
+import os
 import re
 import string
+import sys
 from collections import defaultdict, namedtuple
+from functools import partial
 
 
-__version__ = '1.1.1.dev0'
+__version__ = '1.2.0.dev0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = "https://github.com/mgedmin/strace-process-tree"
 __licence__ = 'GPL v2 or later'  # or ask me for MIT
+
+
+class Theme(object):
+
+    default_styles = dict(
+        tree='normal',
+        pid='red',
+        process='green',
+        time_range='blue',
+    )
+
+    # In case we want pure-ASCII trees in the future
+    tree_space = '    '
+    tree_trunk = '  │ '
+    tree_fork  = '  ├─'   # noqa: E221
+    tree_end   = '  └─'   # noqa: E221
+
+    def __new__(cls, *args, **kw):
+        if cls is Theme:
+            if cls.should_use_color():
+                cls = AnsiTheme
+            else:
+                cls = PlainTheme
+        return object.__new__(cls, *args, **kw)
+
+    def __init__(self):
+        self.styles = dict(self.default_styles)
+
+    @classmethod
+    def should_use_color(cls):
+        return cls.is_terminal() and cls.terminal_supports_color()
+
+    @classmethod
+    def is_terminal(cls):
+        return hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+
+    @classmethod
+    def terminal_supports_color(cls):
+        return (os.environ.get('TERM') or 'dumb') != 'dumb'
+
+    def _format(self, prefix, suffix, text):
+        if not text:
+            return ''
+        return '{}{}{}'.format(prefix, text, suffix)
+
+    def __getattr__(self, attr):
+        if attr not in self.styles:
+            raise AttributeError(attr)
+        style = self.styles[attr]
+        prefix = self.ctlseq[style]
+        suffix = self.ctlseq['normal']
+        _format = partial(self._format, prefix, suffix)
+        setattr(self, attr, _format)
+        return _format
+
+
+class PlainTheme(Theme):
+
+    def _no_format(self, text):
+        return text or ''
+
+    def __getattr__(self, attr):
+        if attr not in self.styles:
+            raise AttributeError(attr)
+        _format = self._no_format
+        setattr(self, attr, _format)
+        return _format
+
+
+class AnsiTheme(Theme):
+
+    ctlseq = dict(
+        normal='\033[m',
+        red='\033[31m',
+        green='\033[32m',
+        blue='\033[34m',
+    )
 
 
 Event = namedtuple('Event', 'pid, timestamp, event')
@@ -156,41 +236,50 @@ class ProcessTree(object):
         else:
             return ''
 
-    def _format(self, processes, indent='', level=0):
+    def _format_process_name(self, theme, name, indent, cs, ccs):
+        lines = (name or '').split('\n')
+        return '\n{indent}{tree}    '.format(
+            indent=indent,
+            tree=theme.tree(cs + ccs),
+        ).join(
+            theme.process(line)
+            for line in lines
+        )
+
+    def _format(self, theme, processes, indent='', level=0):
         r = []
         for n, process in enumerate(processes):
             if level == 0:
                 s, cs = '', ''
             elif n < len(processes) - 1:
-                s, cs = '  ├─', '  │ '
+                s, cs = theme.tree_fork, theme.tree_trunk
             else:
-                s, cs = '  └─', '    '
+                s, cs = theme.tree_end, theme.tree_space
             children = sorted(self.children[process])
             if children:
-                ccs = '  │ '
+                ccs = theme.tree_trunk
             else:
-                ccs = '    '
-            name = process.name or ''
-            name = name.replace('\n', '\n' + indent + cs + ccs + '    ')
+                ccs = theme.tree_space
             time_range = self._format_time_range(
                 self.start_time.get(process),
                 self.exit_time.get(process),
             )
             title = '{pid} {name} {time_range}'.format(
-                pid=process.pid or '<unknown>',
-                name=name,
-                time_range=time_range,
+                pid=theme.pid(process.pid or '<unknown>'),
+                name=self._format_process_name(
+                    theme, process.name, indent, cs, ccs),
+                time_range=theme.time_range(time_range),
             ).rstrip()
-            r.append(indent + s + title.rstrip() + '\n')
-            r.append(self._format(children, indent+cs, level+1))
+            r.append(indent + (theme.tree(s) + title).rstrip() + '\n')
+            r.append(self._format(theme, children, indent+cs, level+1))
 
         return ''.join(r)
 
-    def format(self):
-        return self._format(sorted(self.children[None]))
+    def format(self, theme):
+        return self._format(theme, sorted(self.children[None]))
 
     def __str__(self):
-        return self.format()
+        return self.format(PlainTheme())
 
 
 def simplify_syscall(event):
@@ -314,9 +403,13 @@ def main():
 
             Recommended strace options for best results:
 
-                strace -f -e trace=process -s 1024 -o FILENAME COMMAND
+                strace -f -ttt -e trace=process -s 1024 -o FILENAME COMMAND
             """)
     parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('-c', '--color', action='store_true', default=None,
+                        help='force color output')
+    parser.add_argument('--no-color', action='store_false', dest='color',
+                        help='disable color output')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='more verbose output')
     parser.add_argument('filename', type=argparse.FileType('r'),
@@ -327,7 +420,14 @@ def main():
 
     tree = parse_stream(events(args.filename), mogrifier)
 
-    print(tree.format().rstrip())
+    if args.color is None:
+        theme = Theme()  # autodetect
+    elif args.color:
+        theme = AnsiTheme()
+    else:
+        theme = PlainTheme()
+
+    print(tree.format(theme).rstrip())
 
 
 if __name__ == '__main__':

@@ -1,9 +1,66 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 
 import strace_process_tree as stp
 
 import pytest
+
+
+class FakeStdout:
+    def isatty(self):
+        return True
+
+
+def test_Theme_is_terminal_no_it_is_not(capsys):
+    assert not stp.Theme.is_terminal()
+
+
+def test_Theme_is_terminal_yes_it_is(monkeypatch):
+    monkeypatch.setattr(sys, 'stdout', FakeStdout())
+    assert stp.Theme.is_terminal()
+
+
+def test_Theme_terminal_supports_color_no(monkeypatch):
+    monkeypatch.setitem(os.environ, 'TERM', 'dumb')
+    assert not stp.Theme.terminal_supports_color()
+
+
+def test_Theme_terminal_supports_color_yes(monkeypatch):
+    monkeypatch.setitem(os.environ, 'TERM', 'xterm')
+    assert stp.Theme.terminal_supports_color()
+
+
+def test_Theme_autodetection_color_yes(monkeypatch):
+    monkeypatch.setattr(sys, 'stdout', FakeStdout())
+    monkeypatch.setitem(os.environ, 'TERM', 'xterm')
+    assert isinstance(stp.Theme(), stp.AnsiTheme)
+
+
+def test_Theme_autodetection_color_no(monkeypatch):
+    monkeypatch.setattr(sys, 'stdout', FakeStdout())
+    monkeypatch.setitem(os.environ, 'TERM', 'dumb')
+    assert isinstance(stp.Theme(), stp.PlainTheme)
+
+
+def test_PlainTheme_bad_style():
+    with pytest.raises(AttributeError):
+        stp.PlainTheme().waterfall("oOoOoO")
+
+
+def test_AnsiTheme_bad_style():
+    with pytest.raises(AttributeError):
+        stp.AnsiTheme().waterfall("oOoOoO")
+
+
+def test_AnsiTheme_good_style():
+    theme = stp.AnsiTheme()
+    assert theme.pid('PID') == '\033[31mPID\033[m'
+
+
+def test_AnsiTheme_empty_text():
+    theme = stp.AnsiTheme()
+    assert theme.pid('') == ''
 
 
 @pytest.mark.parametrize(['value', 'expected'], [
@@ -264,7 +321,7 @@ def test_main_no_args(monkeypatch, capsys):
         stp.main()
     output = capsys.readouterr().err
     assert output.startswith(
-        'usage: strace-process-tree [-h] [--version] [-v] filename\n'
+        'usage: strace-process-tree [-h] [--version] [-c] [--no-color] [-v] filename\n'
         'strace-process-tree: error:'
     )
 
@@ -331,4 +388,31 @@ def test_main(monkeypatch, tmp_path, capsys):
         u"  │   └─29903 /usr/bin/printf 'one\\n'\n"
         u"  └─29902 /tmp/another.sh\n"
         u"      └─29904 /bin/true\n"
+    )
+
+
+def test_main_force_color(monkeypatch, tmp_path, capsys):
+    filename = tmp_path / "example.log"
+    filename.write_text(
+        u'29900 execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0\n'
+    )
+    monkeypatch.setattr(sys, 'argv', ['strace-process-tree', '-c', str(filename)])
+    stp.main()
+    output = capsys.readouterr().out
+    assert output == (
+        u"\033[31m29900\033[m \033[32m/tmp/test.sh\033[m\n"
+    )
+
+
+def test_main_force_no_color(monkeypatch, tmp_path, capsys):
+    filename = tmp_path / "example.log"
+    filename.write_text(
+        u'29900 execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0\n'
+    )
+    monkeypatch.setattr(sys, 'argv', ['strace-process-tree', '--no-color', str(filename)])
+    monkeypatch.setattr(stp.Theme, 'should_use_color', lambda: True)
+    stp.main()
+    output = capsys.readouterr().out
+    assert output == (
+        u"29900 /tmp/test.sh\n"
     )

@@ -2,9 +2,11 @@ Changes
 =======
 
 
-1.1.1 (unreleased)
+1.2.0 (unreleased)
 ------------------
 
+* Colorize the output if your terminal supports color.
+* Command-line options --color/--no-color if you don't want autodetection.
 * Speed up strace log parsing by 40%.
 
 
