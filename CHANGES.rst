@@ -2,7 +2,7 @@ Changes
 =======
 
 
-1.2.0 (unreleased)
+1.2.0 (2019-08-23)
 ------------------
 
 * Colorize the output if your terminal supports color.
