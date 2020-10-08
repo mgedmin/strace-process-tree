@@ -249,7 +249,6 @@ class ProcessTree(object):
         if start_time is not None and exit_time is not None:
             return '[{duration:.1f}s @{start_time:.1f}s]'.format(
                 start_time=start_time,
-                exit_time=exit_time,
                 duration=exit_time - start_time
             )
         elif start_time:  # skip both None and 0 please
