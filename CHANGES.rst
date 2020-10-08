@@ -5,7 +5,8 @@ Changes
 1.2.1 (unreleased)
 ------------------
 
-- Add support for Python 3.8.
+* Add support for Python 3.8.
+* Drop support for Python 3.5.
 
 
 1.2.0 (2019-08-23)
