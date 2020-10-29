@@ -1,6 +1,10 @@
 strace-process-tree
 ===================
 
+.. image:: https://travis-ci.com/mgedmin/strace-process-tree.svg?branch=master
+    :target: https://travis-ci.com/mgedmin/strace-process-tree
+
+
 Reads strace -f output and produces a process tree.  Example ::
 
     $ strace -f -e trace=process -s 1024 -o /tmp/trace.out make binary-package
