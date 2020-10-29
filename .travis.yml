@@ -1,10 +1,11 @@
 language: python
-dist: xenial
+cache: pip
 python:
   - 2.7
   - 3.6
   - 3.7
   - 3.8
+  - 3.9
   - pypy
   - pypy3
 install:
@@ -15,6 +16,13 @@ script:
   - coverage report -m --fail-under=100
 after_success:
   - coveralls
+
 notifications:
-  email: false
-cache: pip
+  irc:
+    channels:
+      - "chat.freenode.net##mgedmin"
+    on_success: change
+    on_failure: always
+    template:
+      # ping my nick so I get a pushbullet notification on my phone
+      - "mgedmin: %{repository_name} (%{branch}) build %{result}: %{build_url}"
