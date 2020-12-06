@@ -2,9 +2,9 @@
 import os
 import sys
 
-import strace_process_tree as stp
-
 import pytest
+
+import strace_process_tree as stp
 
 
 class FakeStdout:
