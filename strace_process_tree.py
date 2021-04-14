@@ -141,7 +141,7 @@ def parse_timestamp(timestamp):
 RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
 UNFINISHED_SUFFIX = ' <unfinished ...>'
 DURATION_SUFFIX = re.compile(r' <\d+(?:\.\d+)?>$')
-PID = re.compile(r'^\[pid (\d+)\]')
+PID = re.compile(r'^\[pid +(\d+)\]')
 TIMESTAMP = re.compile(r'^\d+(?::\d+:\d+)?(?:\.\d+)?\s+')
 IGNORE = re.compile(r'^$|^strace: Process \d+ attached$')
 

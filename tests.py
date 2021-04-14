@@ -107,10 +107,12 @@ def test_events():
 def test_events_special_pid_format():
     log_lines = [
         '[pid 27369] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
+        '[pid   123] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
     ]
     result = list(stp.events(log_lines))
     assert result == [
         (27369, None, 'execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0'),
+        (123, None, 'execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0'),
     ]
 
 
