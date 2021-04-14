@@ -148,7 +148,7 @@ IGNORE = re.compile(r'^$|^strace: Process \d+ attached$')
 
 def events(stream):
     pending = {}
-    for line in stream:
+    for n, line in enumerate(stream, 1):
         line = line.strip()
         if line.startswith('[pid'):
             line = PID.sub(r'\1', line)
@@ -161,8 +161,8 @@ def events(stream):
             raise SystemExit(
                 "This does not look like a log file produced by strace -f:\n\n"
                 "  %s\n\n"
-                "There should've been a PID at the beginning of the line."
-                % line)
+                "There should've been a PID at the beginning of line %d."
+                % (line, n))
         event = event.lstrip()
         timestamp = None
         if event[:1].isdigit():

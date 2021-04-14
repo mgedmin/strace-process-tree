@@ -7,6 +7,7 @@ Changes
 
 * Add support for Python 3.8 and 3.9.
 * Drop support for Python 3.5.
+* Show line numbers when complaining about malformed input lines.
 
 
 1.2.0 (2019-08-23)

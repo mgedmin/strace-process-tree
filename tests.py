@@ -132,8 +132,9 @@ def test_events_bad_file_format():
     log_lines = [
         'Hello this is a text file and not an strace log file at all actually.',
     ]
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as ctx:
         list(stp.events(log_lines))
+    assert 'line 1.' in str(ctx.value)
 
 
 def test_ProcessTree():
