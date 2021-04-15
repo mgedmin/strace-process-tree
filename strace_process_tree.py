@@ -24,7 +24,7 @@ from functools import partial
 __version__ = '1.2.1.dev0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = "https://github.com/mgedmin/strace-process-tree"
-__licence__ = 'GPL v2 or later'  # or ask me for MIT
+__licence__ = 'GPL v2 or v3'  # or ask me for MIT
 
 
 Tree = namedtuple('Tree', 'trunk, fork, end, space')
