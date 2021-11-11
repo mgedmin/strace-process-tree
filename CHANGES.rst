@@ -5,7 +5,7 @@ Changes
 1.2.1 (unreleased)
 ------------------
 
-* Add support for Python 3.8 and 3.9.
+* Add support for Python 3.8, 3.9, and 3.10.
 * Drop support for Python 3.5.
 * Show line numbers when complaining about malformed input lines.
 * Handle "[pid  NNN]" prefixes with more than one space.
