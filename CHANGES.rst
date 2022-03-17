@@ -6,7 +6,7 @@ Changes
 ------------------
 
 * Add support for Python 3.8, 3.9, and 3.10.
-* Drop support for Python 3.5.
+* Drop support for Python 3.5 and 3.6.
 * Show line numbers when complaining about malformed input lines.
 * Handle "[pid  NNN]" prefixes with more than one space.
 
