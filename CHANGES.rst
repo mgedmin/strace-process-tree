@@ -2,7 +2,7 @@ Changes
 =======
 
 
-1.2.1 (unreleased)
+1.2.1 (2022-10-28)
 ------------------
 
 * Add support for Python 3.8, 3.9, 3.10, and 3.11.
