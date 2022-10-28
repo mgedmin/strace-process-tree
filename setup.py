@@ -27,6 +27,7 @@ setup(
     url="https://github.com/mgedmin/strace-process-tree",
     description="Produce a process tree from an strace log",
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     keywords="strace log process tree",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
