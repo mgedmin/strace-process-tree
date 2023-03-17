@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import sys
 
 import pytest
@@ -22,24 +21,47 @@ def test_Theme_is_terminal_yes_it_is(monkeypatch):
 
 
 def test_Theme_terminal_supports_color_no(monkeypatch):
-    monkeypatch.setitem(os.environ, 'TERM', 'dumb')
+    monkeypatch.setenv('TERM', 'dumb')
     assert not stp.Theme.terminal_supports_color()
 
 
 def test_Theme_terminal_supports_color_yes(monkeypatch):
-    monkeypatch.setitem(os.environ, 'TERM', 'xterm')
+    monkeypatch.setenv('TERM', 'xterm')
     assert stp.Theme.terminal_supports_color()
+
+
+def test_Theme_no_color_unset(monkeypatch):
+    monkeypatch.delenv('NO_COLOR', raising=False)
+    assert not stp.Theme.user_dislikes_color()
+
+
+def test_Theme_no_color_blank(monkeypatch):
+    monkeypatch.setenv('NO_COLOR', '')
+    assert not stp.Theme.user_dislikes_color()
+
+
+def test_Theme_no_color_nonblank(monkeypatch):
+    monkeypatch.setenv('NO_COLOR', 'please')
+    assert stp.Theme.user_dislikes_color()
 
 
 def test_Theme_autodetection_color_yes(monkeypatch):
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
-    monkeypatch.setitem(os.environ, 'TERM', 'xterm')
+    monkeypatch.setenv('TERM', 'xterm')
+    monkeypatch.delenv('NO_COLOR', raising=False)
     assert isinstance(stp.Theme(), stp.AnsiTheme)
 
 
 def test_Theme_autodetection_color_no(monkeypatch):
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
-    monkeypatch.setitem(os.environ, 'TERM', 'dumb')
+    monkeypatch.setenv('TERM', 'dumb')
+    assert isinstance(stp.Theme(), stp.PlainTheme)
+
+
+def test_Theme_autodetection_color_disabled(monkeypatch):
+    monkeypatch.setattr(sys, 'stdout', FakeStdout())
+    monkeypatch.setenv('TERM', 'xterm')
+    monkeypatch.setenv('NO_COLOR', '1')
     assert isinstance(stp.Theme(), stp.PlainTheme)
 
 

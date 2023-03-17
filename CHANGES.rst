@@ -2,10 +2,11 @@ Changes
 =======
 
 
-1.2.2 (unreleased)
+1.3.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Support the NO_COLOR environment variable for disabling color autodetection
+  (see https://no-color.org/).
 
 
 1.2.1 (2022-10-28)

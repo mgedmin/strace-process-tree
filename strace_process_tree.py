@@ -21,7 +21,7 @@ from collections import defaultdict, namedtuple
 from functools import partial
 
 
-__version__ = '1.2.2.dev0'
+__version__ = '1.3.0.dev0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = "https://github.com/mgedmin/strace-process-tree"
 __licence__ = 'GPL v2 or v3'  # or ask me for MIT
@@ -71,7 +71,11 @@ class Theme(object):
 
     @classmethod
     def should_use_color(cls):
-        return cls.is_terminal() and cls.terminal_supports_color()
+        return (
+            cls.is_terminal()
+            and cls.terminal_supports_color()
+            and not cls.user_dislikes_color()
+        )
 
     @classmethod
     def is_terminal(cls):
@@ -80,6 +84,11 @@ class Theme(object):
     @classmethod
     def terminal_supports_color(cls):
         return (os.environ.get('TERM') or 'dumb') != 'dumb'
+
+    @classmethod
+    def user_dislikes_color(cls):
+        # https://no-color.org/
+        return bool(os.environ.get('NO_COLOR'))
 
     @classmethod
     def can_unicode(cls):
