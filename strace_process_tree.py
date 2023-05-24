@@ -17,8 +17,8 @@ import os
 import re
 import string
 import sys
+from abc import ABC
 from collections import defaultdict
-from functools import partial
 from typing import (
     Any,
     Callable,
@@ -58,15 +58,66 @@ TimeSeconds = float
 SemanticStyle = Literal["tree_style", "pid", "process", "time_range"]
 VisualStyle = Literal["normal", "red", "green", "blue"]
 
-class Theme:
 
-    default_styles: Dict[SemanticStyle, VisualStyle] = dict(
-        tree_style='normal',
-        pid='red',
-        process='green',
-        time_range='blue',
-    )
+def NoopStyle() -> Style:
+    # mypy complains that this is used with a non-method but we are creating a method with this.
+    @staticmethod  # type: ignore
+    def _no_format(text: Any) -> str:
+        return text or ''
 
+    return _no_format
+
+
+ANSI_RESET_CODE = '\033[m'
+
+
+def AnsiStyle(enter_code: str) -> Style:
+    # mypy complains that this is used with a non-method but we are creating a method with this.
+    @staticmethod  # type: ignore
+    def _format(text: Any) -> str:
+        if not text:
+            return ''
+        return f'{enter_code}{text}{ANSI_RESET_CODE}'
+
+    return _format
+
+
+class Theme(ABC):
+    tree: Tree
+
+    normal = NoopStyle()
+    red: Style
+    green: Style
+    blue: Style
+
+    tree_style: Style
+    pid: Style
+    process: Style
+    time_range: Style
+
+    def __init__(self, tree: Tree, styles: Dict[SemanticStyle, VisualStyle] = {}) -> None:
+        self.tree = tree
+
+        # Set up semantic styles
+        self.tree_style = getattr(self, styles.get("tree_style", "normal"))
+        self.pid = getattr(self, styles.get("pid", "red"))
+        self.process = getattr(self, styles.get("process", "green"))
+        self.time_range = getattr(self, styles.get("time_range", "blue"))
+
+
+class PlainTheme(Theme):
+    red = NoopStyle()
+    green = NoopStyle()
+    blue = NoopStyle()
+
+
+class AnsiTheme(Theme):
+    red = AnsiStyle('\033[31m')
+    green = AnsiStyle('\033[32m')
+    blue = AnsiStyle('\033[34m')
+
+
+class ThemeFactory:
     ascii_tree = Tree(
         '  | ',
         '  |-',
@@ -81,24 +132,18 @@ class Theme:
         '    ',
     )
 
-    tree: Tree
-    styles: Dict[SemanticStyle, VisualStyle]
+    @classmethod
+    def create(cls, color: Optional[bool] = None, unicode: Optional[bool] = None) -> Theme:
+        if color is None:
+            color = cls.should_use_color()
 
-    def __new__(cls, color: Optional[bool] = None, unicode: Optional[bool] = None) -> 'Theme':
-        if cls is Theme:
-            if color is None:
-                color = cls.should_use_color()
-            if color:
-                cls = AnsiTheme
-            else:
-                cls = PlainTheme
-        return object.__new__(cls)
-
-    def __init__(self, color: Optional[bool] = None, unicode: Optional[bool] = None) -> None:
         if unicode is None:
-            unicode = self.can_unicode()
-        self.tree = self.unicode_tree if unicode else self.ascii_tree
-        self.styles = dict(self.default_styles)
+            unicode = cls.can_unicode()
+
+        theme_cls = AnsiTheme if color else PlainTheme
+        tree = cls.unicode_tree if unicode else cls.ascii_tree
+
+        return theme_cls(tree)
 
     @classmethod
     def should_use_color(cls) -> bool:
@@ -124,47 +169,6 @@ class Theme:
     @classmethod
     def can_unicode(cls) -> bool:
         return getattr(sys.stdout, 'encoding', None) == 'UTF-8'
-
-    def _format(self, prefix: str, suffix: str, text: Any) -> str:
-        if not text:
-            return ''
-        return '{}{}{}'.format(prefix, text, suffix)
-
-    def _no_format(self, text: Any) -> str:
-        return text or ''
-
-    def __getattr__(self, attr: str) -> Style:
-        if attr not in self.styles:
-            raise AttributeError(attr)
-        style = self.styles[attr]
-        if style == 'normal':
-            _format = self._no_format
-        else:
-            prefix = self.ctlseq[style]
-            suffix = self.ctlseq['normal']
-            _format = partial(self._format, prefix, suffix)
-        setattr(self, attr, _format)
-        return _format
-
-
-class PlainTheme(Theme):
-
-    def __getattr__(self, attr: str) -> Style:
-        if attr not in self.styles:
-            raise AttributeError(attr)
-        _format = self._no_format
-        setattr(self, attr, _format)
-        return _format
-
-
-class AnsiTheme(Theme):
-
-    ctlseq: Dict[VisualStyle, str] = dict(
-        normal='\033[m',
-        red='\033[31m',
-        green='\033[32m',
-        blue='\033[34m',
-    )
 
 
 class Event(NamedTuple):
@@ -354,7 +358,7 @@ class ProcessTree:
         return self._format(theme, sorted(self.children[None]))
 
     def __str__(self) -> str:
-        return self.format(PlainTheme(unicode=True))
+        return self.format(ThemeFactory.create(unicode=True))
 
 
 def simplify_syscall(event: str) -> str:
@@ -499,7 +503,7 @@ def main() -> None:
 
     tree = parse_stream(events(args.filename), mogrifier)
 
-    theme = Theme(color=args.color, unicode=args.unicode)
+    theme = ThemeFactory.create(color=args.color, unicode=args.unicode)
     print(tree.format(theme).rstrip())
 
 

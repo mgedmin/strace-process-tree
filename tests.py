@@ -14,76 +14,66 @@ class FakeStdout:
 
 
 def test_Theme_is_terminal_no_it_is_not(capsys: CaptureFixture[str]) -> None:
-    assert not stp.Theme.is_terminal()
+    assert not stp.ThemeFactory.is_terminal()
 
 
 def test_Theme_is_terminal_yes_it_is(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
-    assert stp.Theme.is_terminal()
+    assert stp.ThemeFactory.is_terminal()
 
 
 def test_Theme_terminal_supports_color_no(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('TERM', 'dumb')
-    assert not stp.Theme.terminal_supports_color()
+    assert not stp.ThemeFactory.terminal_supports_color()
 
 
 def test_Theme_terminal_supports_color_yes(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('TERM', 'xterm')
-    assert stp.Theme.terminal_supports_color()
+    assert stp.ThemeFactory.terminal_supports_color()
 
 
 def test_Theme_no_color_unset(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv('NO_COLOR', raising=False)
-    assert not stp.Theme.user_dislikes_color()
+    assert not stp.ThemeFactory.user_dislikes_color()
 
 
 def test_Theme_no_color_blank(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('NO_COLOR', '')
-    assert not stp.Theme.user_dislikes_color()
+    assert not stp.ThemeFactory.user_dislikes_color()
 
 
 def test_Theme_no_color_nonblank(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('NO_COLOR', 'please')
-    assert stp.Theme.user_dislikes_color()
+    assert stp.ThemeFactory.user_dislikes_color()
 
 
 def test_Theme_autodetection_color_yes(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     monkeypatch.setenv('TERM', 'xterm')
     monkeypatch.delenv('NO_COLOR', raising=False)
-    assert isinstance(stp.Theme(), stp.AnsiTheme)
+    assert isinstance(stp.ThemeFactory.create(), stp.AnsiTheme)
 
 
 def test_Theme_autodetection_color_no(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     monkeypatch.setenv('TERM', 'dumb')
-    assert isinstance(stp.Theme(), stp.PlainTheme)
+    assert isinstance(stp.ThemeFactory.create(), stp.PlainTheme)
 
 
 def test_Theme_autodetection_color_disabled(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     monkeypatch.setenv('TERM', 'xterm')
     monkeypatch.setenv('NO_COLOR', '1')
-    assert isinstance(stp.Theme(), stp.PlainTheme)
-
-
-def test_PlainTheme_bad_style() -> None:
-    with pytest.raises(AttributeError):
-        stp.PlainTheme().waterfall("oOoOoO")
-
-
-def test_AnsiTheme_bad_style() -> None:
-    with pytest.raises(AttributeError):
-        stp.AnsiTheme().waterfall("oOoOoO")
+    assert isinstance(stp.ThemeFactory.create(), stp.PlainTheme)
 
 
 def test_AnsiTheme_good_style() -> None:
-    theme = stp.AnsiTheme()
+    theme = stp.AnsiTheme(stp.ThemeFactory.ascii_tree)
     assert theme.pid('PID') == '\033[31mPID\033[m'
 
 
 def test_AnsiTheme_empty_text() -> None:
-    theme = stp.AnsiTheme()
+    theme = stp.AnsiTheme(stp.ThemeFactory.ascii_tree)
     assert theme.pid('') == ''
 
 
@@ -476,7 +466,7 @@ def test_main_force_no_color(monkeypatch: MonkeyPatch, tmp_path: Path, capsys: C
         u'29900 execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0\n'
     )
     monkeypatch.setattr(sys, 'argv', ['strace-process-tree', '--no-color', str(filename)])
-    monkeypatch.setattr(stp.Theme, 'should_use_color', lambda: True)
+    monkeypatch.setattr(stp.ThemeFactory, 'should_use_color', lambda: True)
     stp.main()
     output = capsys.readouterr().out
     assert output == (
