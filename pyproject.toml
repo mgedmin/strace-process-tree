@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strace-process-tree"
+authors = [
+    {name = "Marius Gedminas", email = "marius@gedmin.as"},
+]
+description = "Produce a process tree from an strace log"
+readme = "README.rst"
+requires-python = ">=3.7"
+keywords = ["strace", "log", "process", "tree"]
+license = {text = "GPL-2.0-only OR GPL-3.0-only"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dynamic = ["version"]
+
+[project.scripts]
+strace-process-tree = "strace_process_tree:main"
+
+[project.urls]
+Homepage = "https://github.com/mgedmin/strace-process-tree"
+
+[tool.setuptools]
+zip-safe = false
+py-modules = ["strace_process_tree"]
+
+[tool.setuptools.dynamic]
+version = {attr = "strace_process_tree.__version__"}
