@@ -5,8 +5,11 @@ Changes
 1.3.0 (unreleased)
 ------------------
 
-- Support the NO_COLOR environment variable for disabling color autodetection
+* Support the NO_COLOR environment variable for disabling color autodetection
   (see https://no-color.org/).
+* Fix parsing '<... syscall resumed>)' lines without a space in front of
+  the closing parenthesis (`issue 5
+  <https://github.com/mgedmin/strace-process-tree/issues/5>`_).
 
 
 1.2.1 (2022-10-28)
