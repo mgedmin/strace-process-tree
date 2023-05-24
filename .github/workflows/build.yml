@@ -20,13 +20,11 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "2.7"
           - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
-          - "pypy2.7"
           - "pypy3.7"
 
     steps:
@@ -63,7 +61,6 @@ jobs:
       - name: Report to coveralls
         run: coveralls
         continue-on-error: true
-        if: "matrix.python-version != '2.7' && matrix.python-version != 'pypy2.7'"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_SERVICE_NAME: github
