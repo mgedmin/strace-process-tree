@@ -1,86 +1,88 @@
 # -*- coding: utf-8 -*-
 import sys
+from pathlib import Path
 
 import pytest
+from pytest import CaptureFixture, MonkeyPatch
 
 import strace_process_tree as stp
 
 
 class FakeStdout:
-    def isatty(self):
+    def isatty(self) -> bool:
         return True
 
 
-def test_Theme_is_terminal_no_it_is_not(capsys):
+def test_Theme_is_terminal_no_it_is_not(capsys: CaptureFixture[str]) -> None:
     assert not stp.Theme.is_terminal()
 
 
-def test_Theme_is_terminal_yes_it_is(monkeypatch):
+def test_Theme_is_terminal_yes_it_is(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     assert stp.Theme.is_terminal()
 
 
-def test_Theme_terminal_supports_color_no(monkeypatch):
+def test_Theme_terminal_supports_color_no(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('TERM', 'dumb')
     assert not stp.Theme.terminal_supports_color()
 
 
-def test_Theme_terminal_supports_color_yes(monkeypatch):
+def test_Theme_terminal_supports_color_yes(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('TERM', 'xterm')
     assert stp.Theme.terminal_supports_color()
 
 
-def test_Theme_no_color_unset(monkeypatch):
+def test_Theme_no_color_unset(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv('NO_COLOR', raising=False)
     assert not stp.Theme.user_dislikes_color()
 
 
-def test_Theme_no_color_blank(monkeypatch):
+def test_Theme_no_color_blank(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('NO_COLOR', '')
     assert not stp.Theme.user_dislikes_color()
 
 
-def test_Theme_no_color_nonblank(monkeypatch):
+def test_Theme_no_color_nonblank(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('NO_COLOR', 'please')
     assert stp.Theme.user_dislikes_color()
 
 
-def test_Theme_autodetection_color_yes(monkeypatch):
+def test_Theme_autodetection_color_yes(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     monkeypatch.setenv('TERM', 'xterm')
     monkeypatch.delenv('NO_COLOR', raising=False)
     assert isinstance(stp.Theme(), stp.AnsiTheme)
 
 
-def test_Theme_autodetection_color_no(monkeypatch):
+def test_Theme_autodetection_color_no(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     monkeypatch.setenv('TERM', 'dumb')
     assert isinstance(stp.Theme(), stp.PlainTheme)
 
 
-def test_Theme_autodetection_color_disabled(monkeypatch):
+def test_Theme_autodetection_color_disabled(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(sys, 'stdout', FakeStdout())
     monkeypatch.setenv('TERM', 'xterm')
     monkeypatch.setenv('NO_COLOR', '1')
     assert isinstance(stp.Theme(), stp.PlainTheme)
 
 
-def test_PlainTheme_bad_style():
+def test_PlainTheme_bad_style() -> None:
     with pytest.raises(AttributeError):
         stp.PlainTheme().waterfall("oOoOoO")
 
 
-def test_AnsiTheme_bad_style():
+def test_AnsiTheme_bad_style() -> None:
     with pytest.raises(AttributeError):
         stp.AnsiTheme().waterfall("oOoOoO")
 
 
-def test_AnsiTheme_good_style():
+def test_AnsiTheme_good_style() -> None:
     theme = stp.AnsiTheme()
     assert theme.pid('PID') == '\033[31mPID\033[m'
 
 
-def test_AnsiTheme_empty_text():
+def test_AnsiTheme_empty_text() -> None:
     theme = stp.AnsiTheme()
     assert theme.pid('') == ''
 
@@ -91,11 +93,11 @@ def test_AnsiTheme_empty_text():
     ('01:02:03', 3723),
     ('01:02:03.045', 3723.045),
 ])
-def test_parse_timestamp(value, expected):
+def test_parse_timestamp(value: str, expected: float) -> None:
     assert stp.parse_timestamp(value) == expected
 
 
-def test_events():
+def test_events() -> None:
     # events() does several things:
     # - extracts the pid if present
     # - extracts timestamps if present
@@ -126,7 +128,7 @@ def test_events():
     ]
 
 
-def test_events_split_vfork():
+def test_events_split_vfork() -> None:
     # Regression test for https://github.com/mgedmin/strace-process-tree/issues/5
     log_lines = [
         '230473 02:47:49 vfork( <unfinished ...>',
@@ -141,7 +143,7 @@ def test_events_split_vfork():
     ]
 
 
-def test_events_special_pid_format():
+def test_events_special_pid_format() -> None:
     log_lines = [
         '[pid 27369] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
         '[pid   123] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
@@ -153,7 +155,7 @@ def test_events_special_pid_format():
     ]
 
 
-def test_events_special_cases_that_cannot_really_happen():
+def test_events_special_cases_that_cannot_really_happen() -> None:
     log_lines = [
         '27369 42',
         '27369 arch_prctl(ARCH_SET_FS, 0x7fef1c205140) = 0 <ha ha>',
@@ -167,7 +169,7 @@ def test_events_special_cases_that_cannot_really_happen():
     ]
 
 
-def test_events_bad_file_format():
+def test_events_bad_file_format() -> None:
     log_lines = [
         'Hello this is a text file and not an strace log file at all actually.',
     ]
@@ -176,13 +178,13 @@ def test_events_bad_file_format():
     assert 'line 1.' in str(ctx.value)
 
 
-def test_ProcessTree():
+def test_ProcessTree() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     assert str(pt) == '42 foo\n'
 
 
-def test_ProcessTree_simple_child():
+def test_ProcessTree_simple_child() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     pt.add_child(42, 43, 'bar', None)
@@ -194,7 +196,7 @@ def test_ProcessTree_simple_child():
     )
 
 
-def test_ProcessTree_fork_then_exec():
+def test_ProcessTree_fork_then_exec() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     pt.add_child(42, 43, 'fork()', None)
@@ -205,7 +207,7 @@ def test_ProcessTree_fork_then_exec():
     )
 
 
-def test_ProcessTree_exec_then_fork():
+def test_ProcessTree_exec_then_fork() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     pt.handle_exec(43, 'bar', None)
@@ -216,7 +218,7 @@ def test_ProcessTree_exec_then_fork():
     )
 
 
-def test_ProcessTree_unknown_parent_pid_and_name():
+def test_ProcessTree_unknown_parent_pid_and_name() -> None:
     pt = stp.ProcessTree()
     pt.add_child(None, 43, 'bar', None)
     pt.add_child(None, 44, 'baz', None)
@@ -227,7 +229,7 @@ def test_ProcessTree_unknown_parent_pid_and_name():
     )
 
 
-def test_ProcessTree_unknown_parent_pid():
+def test_ProcessTree_unknown_parent_pid() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(None, 'foo', None)
     pt.add_child(None, 43, 'bar', None)
@@ -239,7 +241,7 @@ def test_ProcessTree_unknown_parent_pid():
     )
 
 
-def test_ProcessTree_exec_twice():
+def test_ProcessTree_exec_twice() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     pt.add_child(42, 43, 'bar', None)
@@ -250,7 +252,7 @@ def test_ProcessTree_exec_twice():
     )
 
 
-def test_ProcessTree_exec_twice_with_children():
+def test_ProcessTree_exec_twice_with_children() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     pt.add_child(42, 43, 'bar', None)
@@ -264,7 +266,7 @@ def test_ProcessTree_exec_twice_with_children():
     )
 
 
-def test_ProcessTree_start_time_known_exit_time_not_known():
+def test_ProcessTree_start_time_known_exit_time_not_known() -> None:
     pt = stp.ProcessTree()
     pt.handle_exec(42, 'foo', None)
     pt.add_child(42, 43, 'bar', 24)
@@ -274,12 +276,12 @@ def test_ProcessTree_start_time_known_exit_time_not_known():
     )
 
 
-def test_ProcessTree_handle_exit_unknown_pid():
+def test_ProcessTree_handle_exit_unknown_pid() -> None:
     pt = stp.ProcessTree()
     pt.handle_exit(42, 1775.45)
 
 
-def test_simplify_syscall():
+def test_simplify_syscall() -> None:
     assert stp.simplify_syscall(
         'exit_group(0)    '
     ) == (
@@ -297,7 +299,7 @@ def test_simplify_syscall():
     )
 
 
-def test_extract_command_line():
+def test_extract_command_line() -> None:
     assert stp.extract_command_line(
         'exit_group(0)    '
     ) == (
@@ -325,7 +327,7 @@ def test_extract_command_line():
     )
 
 
-def test_parse_argv():
+def test_parse_argv() -> None:
     assert stp.parse_argv('"foo"') == ["foo"]
     assert stp.parse_argv('"foo", "bar"') == ["foo", "bar"]
     assert stp.parse_argv(r'"foo", "bar"..., "baz\t", "\""') == [
@@ -333,17 +335,17 @@ def test_parse_argv():
     ]
 
 
-def test_format_command():
+def test_format_command() -> None:
     assert stp.format_command(["foo", "bar"]) == "foo bar"
     assert stp.format_command(["foo", "bar baz"]) == 'foo "bar baz"'
     assert stp.format_command(["foo", "bar`baz's"]) == r"foo 'bar`baz'\''s'"
 
 
-def test_pushquote():
+def test_pushquote() -> None:
     assert stp.pushquote('"--foo=bar"') == '--foo="bar"'
 
 
-def test_parse_stream():
+def test_parse_stream() -> None:
     tree = stp.parse_stream([
         stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
         stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = 43'),
@@ -357,7 +359,7 @@ def test_parse_stream():
     )
 
 
-def test_parse_stream_exec_error():
+def test_parse_stream_exec_error() -> None:
     tree = stp.parse_stream([
         stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
         stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = 43'),
@@ -369,7 +371,7 @@ def test_parse_stream_exec_error():
     )
 
 
-def test_parse_stream_clone_error():
+def test_parse_stream_clone_error() -> None:
     tree = stp.parse_stream([
         stp.Event(42, 1262372451.579, 'execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0'),
         stp.Event(42, 1262372451.975, 'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fea1237a850) = -1 EPERM (Operation not permitted)'),
@@ -379,7 +381,7 @@ def test_parse_stream_clone_error():
     )
 
 
-def test_main_no_args(monkeypatch, capsys):
+def test_main_no_args(monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]) -> None:
     monkeypatch.setattr(sys, 'argv', ['strace-process-tree'])
     with pytest.raises(SystemExit):
         stp.main()
@@ -390,7 +392,7 @@ def test_main_no_args(monkeypatch, capsys):
     ), output
 
 
-def test_main_help(monkeypatch, capsys):
+def test_main_help(monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]) -> None:
     monkeypatch.setattr(sys, 'argv', ['strace-process-tree', '--help'])
     with pytest.raises(SystemExit):
         stp.main()
@@ -400,7 +402,7 @@ def test_main_help(monkeypatch, capsys):
     )
 
 
-def test_main(monkeypatch, tmp_path, capsys):
+def test_main(monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]) -> None:
     filename = tmp_path / "example.log"
     filename.write_text(
         u'29900 execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0\n'
@@ -455,7 +457,7 @@ def test_main(monkeypatch, tmp_path, capsys):
     )
 
 
-def test_main_force_color(monkeypatch, tmp_path, capsys):
+def test_main_force_color(monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]) -> None:
     filename = tmp_path / "example.log"
     filename.write_text(
         u'29900 execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0\n'
@@ -468,7 +470,7 @@ def test_main_force_color(monkeypatch, tmp_path, capsys):
     )
 
 
-def test_main_force_no_color(monkeypatch, tmp_path, capsys):
+def test_main_force_no_color(monkeypatch: MonkeyPatch, tmp_path: Path, capsys: CaptureFixture[str]) -> None:
     filename = tmp_path / "example.log"
     filename.write_text(
         u'29900 execve("/tmp/test.sh", ["/tmp/test.sh"], 0x7ffc5be66b48 /* 71 vars */) = 0\n'
