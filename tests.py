@@ -126,6 +126,21 @@ def test_events():
     ]
 
 
+def test_events_split_vfork():
+    # Regression test for https://github.com/mgedmin/strace-process-tree/issues/5
+    log_lines = [
+        '230473 02:47:49 vfork( <unfinished ...>',
+        '230474 02:47:49 execve("/home/jtojnar/Projects/tartan/scripts/tartan-build", ["tartan-build", "gcc", "-Isrc/commands/rpm2cpio.p", "-Isrc/commands", "-I../src/commands", "-I.", "-I..", "-I/nix/store/kfizydssj99lf8f6dbmrfa5hap1162m5-glib-2.76.2-dev/include/glib-2.0", "-I/nix/store/763gsnl7y7nj6v98fp1l380ddvyr6zqv-glib-2.76.2/lib/glib-2.0/include", "-fdiagnostics-color=always", "-D_FILE_OFFSET_BITS=64", "-Wall", "-Winvalid-pch", "-O0", "-g", "-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_38", "-Wall", "-Wextra", "-Wcast-align", "-Wmissing-prototypes", "-Wnested-externs", "-Wpointer-arith", "-Wformat-security", "-Wno-unused-parameter", "-MD", "-MQ", "src/commands/rpm2cpio.p/rpm2cpio.c.o", "-MF", "src/commands/rpm2cpio.p/rpm2cpio.c.o.d", "-o", "src/commands/rpm2cpio.p/rpm2cpio.c.o", "-c", "../src/commands/rpm2cpio.c"], 0x2507640 /* 163 vars */ <unfinished ...>',
+        '230473 02:47:49 <... vfork resumed>)    = 230474',
+        '230474 02:47:49 <... execve resumed>)   = 0',
+    ]
+    result = list(stp.events(log_lines))
+    assert result == [
+        stp.Event(230473, 10069.0, 'vfork()    = 230474'),
+        stp.Event(230474, 10069.0, 'execve("/home/jtojnar/Projects/tartan/scripts/tartan-build", ["tartan-build", "gcc", "-Isrc/commands/rpm2cpio.p", "-Isrc/commands", "-I../src/commands", "-I.", "-I..", "-I/nix/store/kfizydssj99lf8f6dbmrfa5hap1162m5-glib-2.76.2-dev/include/glib-2.0", "-I/nix/store/763gsnl7y7nj6v98fp1l380ddvyr6zqv-glib-2.76.2/lib/glib-2.0/include", "-fdiagnostics-color=always", "-D_FILE_OFFSET_BITS=64", "-Wall", "-Winvalid-pch", "-O0", "-g", "-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_38", "-Wall", "-Wextra", "-Wcast-align", "-Wmissing-prototypes", "-Wnested-externs", "-Wpointer-arith", "-Wformat-security", "-Wno-unused-parameter", "-MD", "-MQ", "src/commands/rpm2cpio.p/rpm2cpio.c.o", "-MF", "src/commands/rpm2cpio.p/rpm2cpio.c.o.d", "-o", "src/commands/rpm2cpio.p/rpm2cpio.c.o", "-c", "../src/commands/rpm2cpio.c"], 0x2507640 /* 163 vars */)   = 0'),
+    ]
+
+
 def test_events_special_pid_format():
     log_lines = [
         '[pid 27369] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',

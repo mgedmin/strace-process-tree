@@ -147,7 +147,7 @@ def parse_timestamp(timestamp):
         return float(timestamp)
 
 
-RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ')
+RESUMED_PREFIX = re.compile(r'<... \w+ resumed> ?')
 UNFINISHED_SUFFIX = ' <unfinished ...>'
 DURATION_SUFFIX = re.compile(r' <\d+(?:\.\d+)?>$')
 PID = re.compile(r'^\[pid +(\d+)\]')
