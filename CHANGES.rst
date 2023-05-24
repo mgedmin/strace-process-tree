@@ -2,7 +2,7 @@ Changes
 =======
 
 
-1.3.0 (unreleased)
+1.3.0 (2023-05-24)
 ------------------
 
 * Support the NO_COLOR environment variable for disabling color autodetection
