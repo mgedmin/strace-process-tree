@@ -5,7 +5,7 @@ Changes
 1.3.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+* Removed support for Python 2.
 
 
 1.3.0 (2023-05-24)
