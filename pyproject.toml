@@ -41,3 +41,17 @@ py-modules = ["strace_process_tree"]
 
 [tool.setuptools.dynamic]
 version = {attr = "strace_process_tree.__version__"}
+
+[tool.isort]
+# from X import (
+#   a,
+#   b,
+# )
+multi_line_output = 3
+include_trailing_comma = true
+lines_after_imports = 2
+reverse_relative = true
+default_section = "THIRDPARTY"
+known_first_party = "strace_process_tree"
+# known_third_party = pytest, ...
+# skip = filename...
