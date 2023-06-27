@@ -324,6 +324,7 @@ def simplify_syscall(event):
 
 def extract_command_line(event):
     # execve("/usr/bin/foo", ["foo", "bar"], [/* 45 vars */]) => foo bar
+    # execve("/usr/bin/foo", ["foo", "bar"], [/* 1 var */]) => foo bar
     if event.startswith('clone('):
         if 'CLONE_THREAD' in event:
             return '(thread)'
@@ -334,7 +335,7 @@ def extract_command_line(event):
     elif event.startswith('execve('):
         command = event.strip()
         command = re.sub(r'^execve\([^[]*\[', '', command)
-        command = re.sub(r'\], (0x[0-9a-f]+ )?\[?/\* \d+ vars \*/\]?\)$', '',
+        command = re.sub(r'\], (0x[0-9a-f]+ )?\[?/\* \d+ vars? \*/\]?\)$', '',
                          command)
         command = parse_argv(command)
         return format_command(command)
