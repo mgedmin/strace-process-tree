@@ -2,7 +2,7 @@ Changes
 =======
 
 
-1.3.1 (unreleased)
+1.4.0 (2023-06-27)
 ------------------
 
 * Fix parsing `/* 1 var */` (`issue 9
