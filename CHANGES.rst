@@ -5,6 +5,8 @@ Changes
 1.3.1 (unreleased)
 ------------------
 
+* Fix parsing `/* 1 var */` (`issue 9
+  <https://github.com/mgedmin/strace-process-tree/pull/9>`_).
 * Removed support for Python 2.
 
 

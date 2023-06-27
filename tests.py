@@ -309,6 +309,11 @@ def test_extract_command_line():
         'foo bar'
     )
     assert stp.extract_command_line(
+        'execve("/usr/bin/foo", ["short", "env"], [/* 1 var */])'
+    ) == (
+        'short env'
+    )
+    assert stp.extract_command_line(
         'clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7fbb38e89a10)'
     ) == (
         '(fork)'
