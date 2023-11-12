@@ -47,6 +47,9 @@ setup(
     ],
     license="GPL v2 or v3",
     python_requires=">=3.7",
+    install_requires=[
+        'typing_extensions; python_version<"3.8"',
+    ],
 
     py_modules=["strace_process_tree"],
     zip_safe=False,
