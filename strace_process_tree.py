@@ -317,7 +317,7 @@ class ProcessTree(object):
 def simplify_syscall(event):
     # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=...,
     #       child_tidptr=...) => clone(FLAGS)
-    if event.startswith('clone('):
+    if event.startswith('clone(') or event.startswith('clone3('):
         event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
     return event.rstrip()
 
@@ -325,7 +325,7 @@ def simplify_syscall(event):
 def extract_command_line(event):
     # execve("/usr/bin/foo", ["foo", "bar"], [/* 45 vars */]) => foo bar
     # execve("/usr/bin/foo", ["foo", "bar"], [/* 1 var */]) => foo bar
-    if event.startswith('clone('):
+    if event.startswith('clone(') or event.startswith('clone3('):
         if 'CLONE_THREAD' in event:
             return '(thread)'
         elif 'flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD' in event:
@@ -415,7 +415,7 @@ def parse_stream(event_stream, mogrifier=extract_command_line):
             if result == '0':
                 name = mogrifier(args)
                 tree.handle_exec(e.pid, name, timestamp)
-        if e.event.startswith(('clone(', 'fork(', 'vfork(')):
+        if e.event.startswith(('clone(', 'clone3(', 'fork(', 'vfork(')):
             args, equal, result = e.event.rpartition(' = ')
             # if clone() fails, the event will look like this:
             #   clone(...) = -1 EPERM (Operation not permitted)
