@@ -317,7 +317,7 @@ class ProcessTree(object):
 def simplify_syscall(event):
     # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=...,
     #       child_tidptr=...) => clone(FLAGS)
-    if event.startswith('clone(') or event.startswith('clone3('):
+    if event.startswith(('clone(', 'clone3(')):
         event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
     return event.rstrip()
 
@@ -325,7 +325,7 @@ def simplify_syscall(event):
 def extract_command_line(event):
     # execve("/usr/bin/foo", ["foo", "bar"], [/* 45 vars */]) => foo bar
     # execve("/usr/bin/foo", ["foo", "bar"], [/* 1 var */]) => foo bar
-    if event.startswith('clone(') or event.startswith('clone3('):
+    if event.startswith(('clone(', 'clone3(')):
         if 'CLONE_THREAD' in event:
             return '(thread)'
         elif 'flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD' in event:
