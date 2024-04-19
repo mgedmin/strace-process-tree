@@ -318,7 +318,7 @@ def simplify_syscall(event):
     # clone(child_stack=0x..., flags=FLAGS, parent_tidptr=..., tls=...,
     #       child_tidptr=...) => clone(FLAGS)
     if event.startswith(('clone(', 'clone3(')):
-        event = re.sub('[(].*, flags=([^,]*), .*[)]', r'(\1)', event)
+        event = re.sub('[(].*(?:, |{)flags=([^,]*), .*[)]', r'(\1)', event)
     return event.rstrip()
 
 

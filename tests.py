@@ -295,6 +295,11 @@ def test_simplify_syscall():
     ) == (
         'clone(CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID)'
     )
+    assert stp.simplify_syscall(
+        'clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, child_tid=0x7f1e00bff910, parent_tid=0x7f1e00bff910, exit_signal=0, stack=0x7f1e003ff000, stack_size=0x7feb40, tls=0x7f1e00bff640} => {parent_tid=[1942]}, 88)'
+    ) == (
+        'clone3(CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID)'
+    )
 
 
 def test_extract_command_line():
