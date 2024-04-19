@@ -2,16 +2,18 @@ Changes
 =======
 
 
-1.4.1 (unreleased)
+1.5.0 (2024-04-19)
 ------------------
 
 - Add support for Python 3.12.
+- Recognize the clone3 system call (`issue 11
+  <https://github.com/mgedmin/strace-process-tree/pull/11>`_).
 
 
 1.4.0 (2023-06-27)
 ------------------
 
-* Fix parsing `/* 1 var */` (`issue 9
+* Fix parsing ``/* 1 var */`` (`issue 9
   <https://github.com/mgedmin/strace-process-tree/pull/9>`_).
 * Removed support for Python 2.
 
