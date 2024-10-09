@@ -5,7 +5,7 @@ Changes
 1.5.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add support for Python 3.13.
 
 
 1.5.0 (2024-04-19)
