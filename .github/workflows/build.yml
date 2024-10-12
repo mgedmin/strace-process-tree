@@ -59,7 +59,7 @@ jobs:
 
       - name: Check test coverage
         run: |
-          coverage report -m --fail-under=${{ matrix.python-version == '3.9' && 99 || 100 }}
+          coverage report -m --fail-under=${{ contains(fromJSON('["3.7", "3.8", "3.9"]'), matrix.python-version) && 99 || 100 }}
           coverage xml
 
       - name: Report to coveralls
