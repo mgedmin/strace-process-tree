@@ -341,12 +341,14 @@ def test_parse_argv():
     assert stp.parse_argv(r'"foo", "bar"..., "baz\t", "\""') == [
         "foo", "bar...", "baz\t", '"',
     ]
+    assert stp.parse_argv('"foo", "bar", ...') == ["foo", "bar", ...]
 
 
 def test_format_command():
     assert stp.format_command(["foo", "bar"]) == "foo bar"
     assert stp.format_command(["foo", "bar baz"]) == 'foo "bar baz"'
     assert stp.format_command(["foo", "bar`baz's"]) == r"foo 'bar`baz'\''s'"
+    assert stp.format_command(["foo", "bar", ...]) == "foo bar ..."
 
 
 def test_pushquote():

@@ -360,6 +360,15 @@ def parse_argv(s):
     for c in it:
         if c == ' ':
             continue
+        if c == '.':
+            c = next(it)
+            assert c == ".", c
+            c = next(it)
+            assert c == ".", c
+            c = next(it)
+            args.append(Ellipsis)
+            assert c == ',', (c, s)
+            continue
         assert c == '"', c
         arg = []
         for c in it:  # pragma: no branch -- loop will execute at least once
@@ -389,6 +398,7 @@ SHELL_SAFE_QUOTED = SHELL_SAFE_CHARS | set("!#&'()*;<>?[]{|} \t\n")
 
 def format_command(command):
     return ' '.join(map(pushquote, (
+        '...' if arg is Ellipsis else
         arg if all(c in SHELL_SAFE_CHARS for c in arg) else
         '"%s"' % arg if all(c in SHELL_SAFE_QUOTED for c in arg) else
         "'%s'" % arg.replace("'", "'\\''")
