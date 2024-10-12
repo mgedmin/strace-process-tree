@@ -141,6 +141,18 @@ def test_events_split_vfork():
     ]
 
 
+def test_events_result_unavailable():
+    # Regression test for https://github.com/mgedmin/strace-process-tree/issues/12
+    log_lines = [
+        '230473 02:47:49 futex( <unfinished ...>',
+        '230473 02:47:49 <... futex resumed>)    = ? <unavailable>',
+    ]
+    result = list(stp.events(log_lines))
+    assert result == [
+        stp.Event(230473, 10069.0, 'futex()    = ? <unavailable>'),
+    ]
+
+
 def test_events_special_pid_format():
     log_lines = [
         '[pid 27369] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
