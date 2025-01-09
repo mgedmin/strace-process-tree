@@ -1,7 +1,7 @@
 strace-process-tree
 ===================
 
-.. image:: https://github.com/mgedmin/strace-process-tree/workflows/build/badge.svg?branch=master
+.. image:: https://github.com/mgedmin/strace-process-tree/actions/workflows/build.yml/badge.svg?branch=master
     :target: https://github.com/mgedmin/strace-process-tree/actions
 
 
