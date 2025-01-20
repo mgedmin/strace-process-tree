@@ -5,9 +5,10 @@ Changes
 1.5.2 (unreleased)
 ------------------
 
-- Fix parsing `execve("command", ["args", ...], [/* N vars */)]` with a `...`
-  in the argv array (`issue 12
+- Fix parsing ``execve("command", ["args", ...], [/* N vars */)]`` with a
+  ``...`` in the argv array (`issue 12
   <https://github.com/mgedmin/strace-process-tree/issues/12>`_).
+- Drop support for Python 3.7.
 
 
 1.5.1 (2024-10-09)
