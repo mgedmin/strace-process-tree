@@ -22,7 +22,7 @@ from contextlib import nullcontext
 from functools import partial
 
 
-__version__ = '1.5.2'
+__version__ = '1.5.3.dev0'
 __author__ = 'Marius Gedminas <marius@gedmin.as>'
 __url__ = "https://github.com/mgedmin/strace-process-tree"
 __licence__ = 'GPL v2 or v3'  # or ask me for MIT
