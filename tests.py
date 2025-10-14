@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+from io import StringIO
 
 import pytest
 
@@ -401,6 +402,12 @@ def test_parse_stream_clone_error():
     assert str(tree) == (
         "42 /tmp/test.sh\n"
     )
+
+
+def test_open_arg(monkeypatch):
+    monkeypatch.setattr(sys, 'stdin', StringIO('hello world'))
+    with stp.open_arg('-') as fp:
+        assert fp.read() == 'hello world'
 
 
 def test_main_no_args(monkeypatch, capsys):
