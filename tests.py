@@ -12,6 +12,15 @@ class FakeStdout:
         return True
 
 
+@pytest.fixture(autouse=True)
+def fix_argv0(monkeypatch):
+    # argparse in Python 3.14 is a clever little monkey that looks at
+    # sys.modules['__main__'].__spec__ to figure out if the script was started
+    # with python -m modname instead of by running a script.py, and if so it
+    # ignores sys.argv[0] completely.
+    monkeypatch.setattr(sys.modules['__main__'], '__spec__', None)
+
+
 def test_Theme_is_terminal_no_it_is_not(capsys):
     assert not stp.Theme.is_terminal()
 
