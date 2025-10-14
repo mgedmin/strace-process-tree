@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+from io import StringIO
 
 import pytest
 
@@ -9,6 +10,15 @@ import strace_process_tree as stp
 class FakeStdout:
     def isatty(self):
         return True
+
+
+@pytest.fixture(autouse=True)
+def fix_argv0(monkeypatch):
+    # argparse in Python 3.14 is a clever little monkey that looks at
+    # sys.modules['__main__'].__spec__ to figure out if the script was started
+    # with python -m modname instead of by running a script.py, and if so it
+    # ignores sys.argv[0] completely.
+    monkeypatch.setattr(sys.modules['__main__'], '__spec__', None)
 
 
 def test_Theme_is_terminal_no_it_is_not(capsys):
@@ -401,6 +411,12 @@ def test_parse_stream_clone_error():
     assert str(tree) == (
         "42 /tmp/test.sh\n"
     )
+
+
+def test_open_arg(monkeypatch):
+    monkeypatch.setattr(sys, 'stdin', StringIO('hello world'))
+    with stp.open_arg('-') as fp:
+        assert fp.read() == 'hello world'
 
 
 def test_main_no_args(monkeypatch, capsys):

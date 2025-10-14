@@ -18,6 +18,7 @@ import re
 import string
 import sys
 from collections import defaultdict, namedtuple
+from contextlib import nullcontext
 from functools import partial
 
 
@@ -439,6 +440,13 @@ def parse_stream(event_stream, mogrifier=extract_command_line):
     return tree
 
 
+def open_arg(arg: str):
+    if arg == '-':
+        return nullcontext(sys.stdin)
+    else:
+        return open(arg)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="""
@@ -459,13 +467,14 @@ def main():
                         help='force ASCII output')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='more verbose output')
-    parser.add_argument('filename', type=argparse.FileType('r'),
+    parser.add_argument('filename',
                         help='strace log to parse (use - to read stdin)')
     args = parser.parse_args()
 
     mogrifier = simplify_syscall if args.verbose else extract_command_line
 
-    tree = parse_stream(events(args.filename), mogrifier)
+    with open_arg(args.filename) as fp:
+        tree = parse_stream(events(fp), mogrifier)
 
     theme = Theme(color=args.color, unicode=args.unicode)
     print(tree.format(theme).rstrip())
