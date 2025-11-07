@@ -36,8 +36,6 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -47,7 +45,7 @@ setup(
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
     license="GPL v2 or v3",
-    python_requires=">=3.8",
+    python_requires=">=3.10",
 
     py_modules=["strace_process_tree"],
     zip_safe=False,
