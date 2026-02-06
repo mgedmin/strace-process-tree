@@ -187,7 +187,11 @@ def events(stream):
         if event.startswith('<...'):
             m = RESUMED_PREFIX.match(event)
             if m is not None:
-                pending_event, timestamp = pending.pop(pid)
+                pending_data = pending.pop(pid, None)
+                if pending_data is None:
+                    # No pending event found for this PID, skip
+                    continue
+                pending_event, timestamp = pending_data
                 event = pending_event + event[m.end():]
         if event.endswith(UNFINISHED_SUFFIX):
             pending[pid] = (event[:-len(UNFINISHED_SUFFIX)], timestamp)

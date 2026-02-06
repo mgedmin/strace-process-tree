@@ -163,6 +163,17 @@ def test_events_result_unavailable():
     ]
 
 
+def test_events_resumed_without_pending():
+    log_lines = [
+        '99999 02:47:49 <... clone resumed>) = 88888',
+        '100 02:47:50 execve("/bin/true", ["/bin/true"], 0x0 /* 0 vars */) = 0',
+    ]
+    result = list(stp.events(log_lines))
+    assert result == [
+        stp.Event(100, 10070.0, 'execve("/bin/true", ["/bin/true"], 0x0 /* 0 vars */) = 0'),
+    ]
+
+
 def test_events_special_pid_format():
     log_lines = [
         '[pid 27369] execve("bin/test", ["bin/test", "-pvc", "-t", "allowhosts.txt"], 0x7fffa04e8ba0 /* 71 vars */) = 0',
