@@ -6,6 +6,9 @@ Changes
 ------------------
 
 - Drop support for Python 3.8 and 3.9.
+- Fix crash when encountering an unmatched ``<... resume`` (`issue 14
+  <https://github.com/mgedmin/strace-process-tree/pull/14
+ >`_).
 
 
 1.5.2 (2025-10-14)
