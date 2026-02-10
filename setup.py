@@ -32,8 +32,6 @@ setup(
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
-        "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.10",
@@ -44,7 +42,7 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
-    license="GPL v2 or v3",
+    license="GPL-2.0-or-later",
     python_requires=">=3.10",
 
     py_modules=["strace_process_tree"],
