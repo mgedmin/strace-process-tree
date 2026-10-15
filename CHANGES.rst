@@ -5,7 +5,7 @@ Changes
 1.5.4 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add support for Python 3.15.
 
 
 1.5.3 (2026-02-10)
