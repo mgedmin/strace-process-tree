@@ -477,8 +477,11 @@ def main():
 
     mogrifier = simplify_syscall if args.verbose else extract_command_line
 
-    with open_arg(args.filename) as fp:
-        tree = parse_stream(events(fp), mogrifier)
+    try:
+        with open_arg(args.filename) as fp:
+            tree = parse_stream(events(fp), mogrifier)
+    except OSError as e:
+        parser.error("can't open '%s': %s" % (args.filename, e.strerror or e))
 
     theme = Theme(color=args.color, unicode=args.unicode)
     print(tree.format(theme).rstrip())
