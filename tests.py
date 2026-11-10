@@ -441,6 +441,17 @@ def test_main_no_args(monkeypatch, capsys):
     ), output
 
 
+def test_main_missing_input_file(monkeypatch, tmp_path, capsys):
+    missing = tmp_path / "does-not-exist.log"
+    monkeypatch.setattr(sys, 'argv', ['strace-process-tree', str(missing)])
+    with pytest.raises(SystemExit) as ctx:
+        stp.main()
+    assert ctx.value.code == 2
+    output = capsys.readouterr().err
+    assert str(missing) in output
+    assert 'Traceback' not in output
+
+
 def test_main_help(monkeypatch, capsys):
     monkeypatch.setattr(sys, 'argv', ['strace-process-tree', '--help'])
     with pytest.raises(SystemExit):
